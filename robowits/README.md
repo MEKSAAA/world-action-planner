@@ -117,6 +117,9 @@ sampling variation; it is not a claim of deterministic GPU kernels. Freeze mode
 repeats the last history skeleton but is scored against the real future.
 `metrics.json` contains PSNR, SSIM, region MSE and copy-last scores for each unique
 view. `--lpips` adds optional CPU LPIPS using `pyiqa` and its pretrained weights.
+Robot-region MSE uses a Euclidean 15-pixel radius around skeleton pixels above
+intensity 24. Results from before this radius correction (including the original
+smoke run) used a 15×15 square and should not be mixed into new comparisons.
 Videos show `GT | condition | true prediction | frozen prediction`.
 
 ## Finetuning
@@ -171,3 +174,29 @@ python -m pytest tests/robowits -q
 
 Comparison rejects different window sets, GT hashes or seeds. Evaluate multiple
 seeds for quality claims and keep the final holdout separate from model selection.
+
+## Single-task experiment pipeline
+
+After conversion, run both official zero-shot checkpoints in parallel, then
+two-GPU finetuning (batch 1 × accumulation 4 × two GPUs = effective batch 8),
+then the final matched probe. This takes hours; launch it as a persistent job.
+The output directory must be new. `--ckpts` points to the `world_models` directory
+containing both checkpoint directories and the prompt embedding files.
+
+```bash
+python -m robowits.experiment --data "$DATA" --ckpts "$CKPTS" --wan "$WAN" \
+  --out /data/wap_robowits_runs/lemon --gpus 0,1 --steps 2000
+```
+
+`--dry-run` validates inputs and prints commands. The actual run writes
+`commands.json`, atomic `status.json`, individual stage logs and `report.md`.
+It checks the final checkpoint's optimizer step before evaluation. Any stage
+failure stops subsequent stages. Checkpoints roll every 250 optimizer steps;
+the final step also has a permanent copy. Recover a failed training run using
+the standalone train launcher's full-state `--resume` into a new directory.
+
+For the released lemon task, use `--task-indices 2` during conversion. The fixed
+split is episodes 100–102 holdout, 103–104 validation and 105–149 training.
+The experiment uses four windows per held-out episode (12 total), 80 history +
+40 future frames at 20 Hz, seed 0, PSNR/SSIM/LPIPS and region MSE. It evaluates
+world-model prediction given measured robot motion, not task-success rate.

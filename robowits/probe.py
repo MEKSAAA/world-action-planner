@@ -35,7 +35,10 @@ def score(pred, gt, cond, last, lpips=None):
         squared = (p.astype(float)-g.astype(float))**2
         mse_t = squared.mean(axis=(1, 2, 3))
         # Treat near-black codec residuals as background, not skeleton pixels.
-        masks = [cv2.dilate((f.max(-1) > 24).astype(np.uint8), np.ones((15, 15), np.uint8)).astype(bool) for f in c]
+        # A 15-pixel radius, not a 15-pixel-wide kernel (which only reaches 7 px).
+        yy, xx = np.ogrid[-15:16, -15:16]
+        kernel = (xx*xx + yy*yy <= 15**2).astype(np.uint8)
+        masks = [cv2.dilate((f.max(-1) > 24).astype(np.uint8), kernel).astype(bool) for f in c]
         robot = [float(e[m].mean()) for e, m in zip(squared, masks) if m.any()]
         # A visual-change region, not an object/contact mask (also includes shadows).
         motion = np.abs(g.astype(float)-baseline).mean(-1) > 12
@@ -167,7 +170,8 @@ def main():
     (args.out/"run.json").write_text(json.dumps({"checkpoint": str(args.checkpoint.resolve()),
         "checkpoint_bytes": args.checkpoint.stat().st_size, "seed": args.seed,
         "panels_scored": list(VIEW_SLOTS), "video_order": ["GT", "condition", "true", "frozen"],
-        "windows": str(args.windows.resolve()), "pid": os.getpid()}, indent=2))
+        "windows": str(args.windows.resolve()), "robot_region_radius_px": 15,
+        "robot_region_threshold": 24, "pid": os.getpid()}, indent=2))
 
 
 if __name__ == '__main__':
