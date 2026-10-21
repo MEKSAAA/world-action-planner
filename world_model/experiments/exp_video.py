@@ -18,6 +18,7 @@ compatible_algorithms = dict(
 )
 compatible_datasets = dict(
         robosuite=RobosuiteDataset,
+        robowits=RobosuiteDataset,
         robocasa=RobosuiteDataset,
         mimicgen=RobosuiteDataset,
         dexmimicgen=RobosuiteDataset,

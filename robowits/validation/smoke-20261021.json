@@ -1,0 +1,177 @@
+{
+  "date": "2026-10-21",
+  "reference_commit": "e7f1345e4a8f665a17a9c24be78df7c805655a1e",
+  "robowits_reference": "f5d68f2df00fbf3d6d912cec2837deea08d41240",
+  "tests": {
+    "command": "python -m pytest tests/robowits -q",
+    "passed": 10
+  },
+  "source_inventory_splits": {
+    "holdout": 72,
+    "validation": 48,
+    "training": 1087
+  },
+  "geometry": {
+    "genesis_version": "1.3.1",
+    "episode": 0,
+    "samples": 7,
+    "link_comparisons": 224,
+    "physics_steps": 0,
+    "max_link_error_m": 2.3094578538677605e-07,
+    "passed": true
+  },
+  "converted_episodes": [
+    {
+      "episode_index": 0,
+      "task_index": 0,
+      "n_frames": 318,
+      "split": "holdout",
+      "coverage": {
+        "ego": {
+          "min_pixels": 576,
+          "mean_pixels": 780.6124031007752,
+          "empty_frames": 0
+        },
+        "wrist_right": {
+          "min_pixels": 216,
+          "mean_pixels": 298.52713178294573,
+          "empty_frames": 0
+        },
+        "wrist_left": {
+          "min_pixels": 216,
+          "mean_pixels": 285.36821705426354,
+          "empty_frames": 0
+        }
+      }
+    },
+    {
+      "episode_index": 3,
+      "task_index": 0,
+      "n_frames": 317,
+      "split": "validation",
+      "coverage": {
+        "ego": {
+          "min_pixels": 701,
+          "mean_pixels": 804.9143968871596,
+          "empty_frames": 0
+        },
+        "wrist_right": {
+          "min_pixels": 216,
+          "mean_pixels": 457.7003891050584,
+          "empty_frames": 0
+        },
+        "wrist_left": {
+          "min_pixels": 241,
+          "mean_pixels": 344.18677042801556,
+          "empty_frames": 0
+        }
+      }
+    },
+    {
+      "episode_index": 5,
+      "task_index": 0,
+      "n_frames": 489,
+      "split": "training",
+      "coverage": {
+        "ego": {
+          "min_pixels": 444,
+          "mean_pixels": 759.3263403263403,
+          "empty_frames": 0
+        },
+        "wrist_right": {
+          "min_pixels": 216,
+          "mean_pixels": 364.32167832167835,
+          "empty_frames": 0
+        },
+        "wrist_left": {
+          "min_pixels": 216,
+          "mean_pixels": 341.988344988345,
+          "empty_frames": 0
+        }
+      }
+    },
+    {
+      "episode_index": 100,
+      "task_index": 2,
+      "n_frames": 535,
+      "split": "holdout",
+      "coverage": {
+        "ego": {
+          "min_pixels": 798,
+          "mean_pixels": 940.8968421052632,
+          "empty_frames": 0
+        },
+        "wrist_right": {
+          "min_pixels": 216,
+          "mean_pixels": 344.17052631578946,
+          "empty_frames": 0
+        },
+        "wrist_left": {
+          "min_pixels": 300,
+          "mean_pixels": 300.0,
+          "empty_frames": 0
+        }
+      }
+    },
+    {
+      "episode_index": 718,
+      "task_index": 14,
+      "n_frames": 1592,
+      "split": "holdout",
+      "coverage": {
+        "ego": {
+          "min_pixels": 727,
+          "mean_pixels": 903.0959530026109,
+          "empty_frames": 0
+        },
+        "wrist_right": {
+          "min_pixels": 300,
+          "mean_pixels": 595.8733681462141,
+          "empty_frames": 0
+        },
+        "wrist_left": {
+          "min_pixels": 300,
+          "mean_pixels": 340.50522193211486,
+          "empty_frames": 0
+        }
+      }
+    }
+  ],
+  "checkpoint_restore": {
+    "before_step": 1,
+    "after_step": 2,
+    "optimizer_state_count": 1,
+    "sampled_max_weight_changes": {
+      "model.patch_embedding.weight": 4.470348358154297e-08,
+      "model.patch_embedding.bias": 4.470348358154297e-08,
+      "model.text_embedding.0.weight": 4.470348358154297e-08,
+      "model.text_embedding.0.bias": 4.0046870708465576e-08,
+      "model.text_embedding.2.weight": 4.470348358154297e-08,
+      "model.text_embedding.2.bias": 4.0046870708465576e-08,
+      "model.time_embedding.0.weight": 4.0978193283081055e-08,
+      "model.time_embedding.0.bias": 4.0046870708465576e-08
+    },
+    "any_sampled_weight_changed": true
+  },
+  "training_validation": {
+    "completed_global_step": 3,
+    "validation_frames": 101,
+    "limit_val_batches": 1,
+    "log": "outputs/train-resume-debug2.log"
+  },
+  "paired_probe": {
+    "windows": 1,
+    "history_frames": 80,
+    "future_frames": 20,
+    "seed": 0,
+    "initialization": "libero_90_base",
+    "modes": [
+      "true",
+      "frozen",
+      "copy_last"
+    ],
+    "baseline_metrics": "outputs/probe-smoke-baseline/metrics.json",
+    "step2_metrics": "outputs/probe-smoke-step2/metrics.json"
+  },
+  "scope": "Execution smoke checks only. No full dataset conversion, long finetuning, DDP run, LPIPS run, or quality improvement claim."
+}

@@ -1,5 +1,8 @@
 # World Action Planner
 
+RoboWits world-model data preparation, probes and finetuning are documented in
+[`robowits/README.md`](robowits/README.md).
+
 This repository hosts the action-conditioned world models used in the **World Action Planner** paper.
 
 > The world model architecture is based on [Large Video Planner](https://github.com/buoyancy99/large-video-planner) and the [Diffusion Forcing Transformer](https://github.com/kwsong0113/diffusion-forcing-transformer)

@@ -1,0 +1,14 @@
+defaults:
+  - robosuite
+  - _self_
+
+# Paired videos are explicitly resampled from 30 Hz source to 20 Hz.
+fps: 20
+n_frames: 81
+total_frames: 101
+download:
+  override_fps: 20
+augmentation:
+  random_flip: null
+  ratio: [1.0, 1.0]
+  scale: [1.0, 1.0]

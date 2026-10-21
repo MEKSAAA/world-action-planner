@@ -31,7 +31,8 @@ torch.set_float32_matmul_precision("high")
 class ModelCheckpointLink(ModelCheckpoint):
     def on_exception(self, trainer: "pl.Trainer", pl_module: "pl.LightningModule", exception: BaseException) -> None:
         super().on_exception(trainer, pl_module, exception)
-        trainer.logger._scan_and_log_checkpoints(self)
+        if hasattr(trainer.logger, "_scan_and_log_checkpoints"):
+            trainer.logger._scan_and_log_checkpoints(self)
 
 class BaseExperiment(ABC):
     """
@@ -91,7 +92,8 @@ class BaseExperiment(ABC):
         from lightning.pytorch.strategies.ddp import DDPStrategy
 
         return (
-            DDPStrategy(find_unused_parameters=False)
+            # bucket views share memory with .grad, saving one fp32 gradient copy per GPU
+            DDPStrategy(find_unused_parameters=False, gradient_as_bucket_view=True)
             if torch.cuda.device_count() > 1
             else "auto"
         )
@@ -148,7 +150,7 @@ class BasePytorchExperiment(BaseExperiment):
                 batch_size=self.cfg.training.batch_size,
                 num_workers=min(os.cpu_count(), self.cfg.training.data.num_workers),
                 shuffle=shuffle,
-                persistent_workers=True,
+                persistent_workers=self.cfg.training.data.num_workers > 0,
                 pin_memory=True,
             )
         else:
@@ -167,7 +169,7 @@ class BasePytorchExperiment(BaseExperiment):
                 batch_size=self.cfg.validation.batch_size,
                 num_workers=min(os.cpu_count(), self.cfg.validation.data.num_workers),
                 shuffle=shuffle,
-                persistent_workers=True,
+                persistent_workers=self.cfg.validation.data.num_workers > 0,
                 pin_memory=True,
             )
         else:
@@ -186,7 +188,7 @@ class BasePytorchExperiment(BaseExperiment):
                 batch_size=self.cfg.test.batch_size,
                 num_workers=min(os.cpu_count(), self.cfg.test.data.num_workers),
                 shuffle=shuffle,
-                persistent_workers=True,
+                persistent_workers=self.cfg.test.data.num_workers > 0,
             )
         else:
             return None
@@ -263,6 +265,14 @@ class BaseLightningExperiment(BasePytorchExperiment):
                     **self.cfg.training.checkpointing,
                 )
             )
+        # optional second checkpoint stream, e.g. permanent copies every 2k steps next to a rolling latest
+        if self.cfg.training.get("checkpointing_keep"):
+            callbacks.append(
+                ModelCheckpoint(
+                    self.output_dir / "checkpoints" / "keep",
+                    **self.cfg.training.checkpointing_keep,
+                )
+            )
 
         trainer = pl.Trainer(
             accelerator="auto",
@@ -278,7 +288,7 @@ class BaseLightningExperiment(BasePytorchExperiment):
             accumulate_grad_batches=self.cfg.training.optim.accumulate_grad_batches,
             precision=self.cfg.training.precision,
             detect_anomaly=False,  # self.cfg.debug,
-            num_sanity_val_steps=2,
+            num_sanity_val_steps=self.cfg.validation.get("num_sanity_val_steps", 2),
             max_epochs=self.cfg.training.max_epochs,
             max_steps=self.cfg.training.max_steps,
             max_time=self.cfg.training.max_time,
