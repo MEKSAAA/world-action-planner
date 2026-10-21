@@ -18,6 +18,22 @@ from .train import validate_data
 ROOT = Path(__file__).resolve().parents[1]
 
 
+def zero_shot_report(libero, robosuite):
+    compare(libero, robosuite)  # Validate matching window hashes, episodes and seeds.
+    lines = ['| View | Metric | Libero true | Libero frozen | Robosuite true | Robosuite frozen | Copy last |',
+             '|---|---|---:|---:|---:|---:|---:|']
+    for view in ('ego', 'wrist_right', 'wrist_left'):
+        for metric in ('psnr', 'lpips', 'robot_region_mse', 'changed_region_mse'):
+            values = []
+            for rows, mode in ((libero, 'true'), (libero, 'frozen'),
+                               (robosuite, 'true'), (robosuite, 'frozen'), (libero, 'copy_last')):
+                v = [r[mode][view].get(metric) for r in rows]
+                v = [x for x in v if x is not None]
+                values.append(f'{sum(v)/len(v):.4f}' if v else '—')
+            lines.append('| ' + ' | '.join([view, metric, *values]) + ' |')
+    return '\n'.join(lines)
+
+
 def main():
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument('--data', type=Path, required=True)
@@ -110,6 +126,9 @@ def main():
     try:
         run_group([('windows', gpus[0])])
         run_group([('libero_90_base', gpus[0]), ('robosuite_ft', gpus[1])])
+        baselines = {name: json.loads((args.out/name/'metrics.json').read_text()) for name in checkpoints}
+        zero_table = zero_shot_report(baselines['libero_90_base'], baselines['robosuite_ft'])
+        (args.out/'zero-shot.md').write_text(zero_table + '\n')
         run_group([('train', args.gpus)])
         import torch
         checkpoint = torch.load(args.out/'train/checkpoints/last.ckpt', map_location='cpu', weights_only=False, mmap=True)
@@ -125,8 +144,8 @@ def main():
                   'Measured future robot poses condition the model. This is not closed-loop policy success.',
                   'Robot-region radius is 15 px. Changed-region scores are not object/contact masks.',
                   'One seed and the same task/scene; generalization is not established.', '']
-        for name in checkpoints:
-            baseline = json.loads((args.out/name/'metrics.json').read_text())
+        report += ['## Zero-shot controls', '', zero_table, '']
+        for name, baseline in baselines.items():
             report += [f'## {name} versus finetuned robosuite_ft', '', compare(baseline, tuned), '']
         (args.out/'report.md').write_text('\n'.join(report))
         status('experiment', 'complete', report=str(args.out/'report.md'))
