@@ -249,6 +249,10 @@ CUDA_VISIBLE_DEVICES=1 PYOPENGL_PLATFORM=egl GS_GYM_ASSET_PATHS=/path/to/assets 
 
 Use a new output directory. `--cases 1 --max-steps 120` is an integration check,
 not task-success evaluation. `--baseline-only` runs the matched policy without WM.
+After interruption, repeat the identical command with `--resume`. Model hashes,
+scene file, simulation revision and scoring protocol must match. Completed episodes
+are retained; incomplete episodes are archived and restarted from their initial
+state. A new worker queue prevents stale predictions from being reused.
 Full pilot runtime is dominated by up to 100 WM predictions (two per selection,
 ten selections per episode, five episodes), approximately 1.5 hours on this machine.
 
@@ -277,9 +281,12 @@ python -m robowits.prepare_policy_data --source /path/to/RoboWits_lerobot_datase
 ```
 
 The native order is R position, L position, R rotation vector, L rotation vector,
-R gripper width, L gripper width. Positions are world-frame `Gripper_Tip` poses;
+R gripper width, L gripper width. Positions are base-relative `Gripper_Tip` poses
+(subtract the robot base at z=1.08 m from world positions);
 rotations are canonical axis-angle. `validate_geometry` checks both EE position
-and orientation against Genesis131 without advancing physics.
+and orientation against Genesis131 and round-trips targets through native Pink IK
+without advancing physics. Each new closed-loop episode also verifies converted
+EE state against the actual environment observation before any action.
 
 Global action/state normalization uses only episodes 105–149 (45 lemon demos).
 For native LeRobot finetuning, pass episodes `[105,...,149,103,104]` in that order

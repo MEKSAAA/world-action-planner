@@ -5,7 +5,10 @@
   "link_comparisons": 224,
   "physics_steps": 0,
   "max_link_error_m": 2.721400225237671e-07,
-  "max_ee_position_error_m": 2.7161428306499147e-07,
+  "max_ee_position_error_m": 2.83194363233698e-07,
+  "ee_position_frame": "robot-base-relative (native observation and Pink IK target)",
   "max_ee_rotation_error_rad": 5.574422760946965e-07,
+  "max_native_ik_position_error_m": 2.8014183044433594e-06,
+  "max_native_ik_rotation_error_rad": 4.86009878511954e-06,
   "passed": true
 }

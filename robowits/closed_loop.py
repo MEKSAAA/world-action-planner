@@ -102,14 +102,15 @@ class RobotProxy:
 
 class Worker:
     def __init__(self, args):
-        self.queue = args.out/'queue'
+        suffix = f'-resume-{time.time_ns()}' if args.resume else ''
+        self.queue = args.out/f'queue{suffix}'
         self.queue.mkdir()
         cmd = [str(args.wm_python), '-u', '-m', 'robowits.closed_loop_worker', '--queue', str(self.queue),
                '--checkpoint', str(args.wm_checkpoint), '--ckpts', str(args.ckpts), '--wan', str(args.wan)]
         env = dict(os.environ, CUDA_VISIBLE_DEVICES=args.wm_gpu, OMP_NUM_THREADS='4', MKL_NUM_THREADS='4')
         # Keep simulator-specific packages out of the model environment.
         env.pop('PYTHONPATH', None)
-        with (args.out/'wm-worker.log').open('w') as log:
+        with (args.out/f'wm-worker{suffix}.log').open('w') as log:
             self.proc = subprocess.Popen(cmd, cwd=ROOT, env=env, stdout=log, stderr=subprocess.STDOUT)
         try:
             self.wait(self.queue/'ready', 600)
@@ -180,6 +181,14 @@ def rollout(env, policy, pre, post, fk, proxy, worker, args, case, mode, baselin
         np.random.seed(1000+case)
         env.set_eval_dataset_idx(case)
         obs, info = env.reset(seed=1000+case)
+        from .prepare_policy_data import ee14
+        expected_ee = ee14(fk, state16(env._robot)[None])[0]
+        observed_ee = np.asarray(obs['agent_pos'])
+        if not np.allclose(expected_ee, observed_ee, atol=2e-5, rtol=0):
+            raise RuntimeError('Policy-data EE conversion differs from native environment observation')
+        write_json(directory/'interface-check.json', {'frame': 'robot-base-relative',
+                   'max_error': float(np.max(np.abs(expected_ee-observed_ee))),
+                   'converted': expected_ee.tolist(), 'native': observed_ee.tolist()})
         initial = snapshot(env)
         write_json(directory/'initial.json', initial)
         if baseline_initial is not None and not same_state(initial, baseline_initial):
@@ -305,6 +314,30 @@ def report(out, results):
     (out/'report.md').write_text('\n'.join(lines)+'\n')
 
 
+def validate_resume_protocol(previous, current):
+    keys = ('sim_commit', 'eval_sha256', 'policy_weights_sha256', 'wm_checkpoint_sha256',
+            'score_sha256', 'cases', 'max_steps', 'baseline_only', 'control_mode',
+            'observation_mode', 'policy_chunk_executed', 'wm_future_frames',
+            'wm_history_frames', 'wm_fps', 'urdf', 'wan', 'ckpts')
+    changed = [k for k in keys if previous.get(k) != current.get(k)]
+    if changed:
+        raise ValueError(f'Resume would change experiment protocol: {changed}')
+
+
+def completed_or_archive(out, mode, case):
+    directory = out/f'{mode}-{case:02d}'
+    result = directory/'result.json'
+    if result.exists():
+        r = json.loads(result.read_text())
+        if r['status'] == 'complete':
+            return r
+    if directory.exists():
+        archive = out/'interrupted'
+        archive.mkdir(exist_ok=True)
+        directory.rename(archive/f'{mode}-{case:02d}-{time.time_ns()}')
+    return None
+
+
 def main():
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument('--sim-root', type=Path, required=True)
@@ -320,13 +353,19 @@ def main():
     p.add_argument('--cases', type=int, nargs='+', default=[10, 11, 12, 13, 14])
     p.add_argument('--max-steps', type=int, default=1000)
     p.add_argument('--baseline-only', action='store_true')
+    p.add_argument('--resume', action='store_true', help='Reuse completed episodes after validating protocol; archive and restart interrupted episodes')
     args = p.parse_args()
     args.out = args.out.resolve()
     args.wm_checkpoint = args.wm_checkpoint.resolve()
     inventory = json.loads(args.eval_json.read_text())
     if len(set(args.cases)) != len(args.cases) or any(c < 0 or c >= len(inventory) for c in args.cases):
         p.error('Require distinct valid evaluation scene indices')
-    args.out.mkdir(parents=True, exist_ok=False)
+    if args.resume and not (args.out/'protocol.json').exists():
+        p.error('Resume requires an existing protocol.json')
+    args.out.mkdir(parents=True, exist_ok=args.resume)
+    import fcntl
+    run_lock = (args.out/'.run.lock').open('w')
+    fcntl.flock(run_lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
     write_json(args.out/'status.json', {'status': 'initializing', 'pid': os.getpid()})
     sys.path[:0] = [str(args.sim_root), str(args.sim_root/'third_party/lerobot/src')]
     import torch
@@ -348,7 +387,11 @@ def main():
                     wm_future_frames=20, wm_history_frames=80, wm_fps=20,
                     score_rule='closed_loop_score.py; yellow HSV 12:40, green HSV 40:90, margin .02',
                     score_sha256=hashlib.sha256((ROOT/'robowits/closed_loop_score.py').read_bytes()).hexdigest())
-    write_json(args.out/'protocol.json', protocol)
+    if args.resume:
+        validate_resume_protocol(json.loads((args.out/'protocol.json').read_text()), protocol)
+        write_json(args.out/f'resume-protocol-{time.time_ns()}.json', protocol)
+    else:
+        write_json(args.out/'protocol.json', protocol)
     policy = PI05Policy.from_pretrained(args.policy, config=cfg).to('cuda').eval()
     pre, post = make_pre_post_processors(cfg, pretrained_path=str(args.policy),
                                         preprocessor_overrides={'device_processor': {'device': 'cuda'}})
@@ -362,7 +405,8 @@ def main():
         # Run every baseline first; do not choose test cases based on outcomes.
         for case in args.cases:
             write_json(args.out/'status.json', {'status': 'running', 'mode': 'baseline', 'case': case, 'pid': os.getpid()})
-            results.append(rollout(env, policy, pre, post, fk, None, None, args, case, 'baseline'))
+            previous = completed_or_archive(args.out, 'baseline', case) if args.resume else None
+            results.append(previous or rollout(env, policy, pre, post, fk, None, None, args, case, 'baseline'))
             report(args.out, results)
         if not args.baseline_only:
             proxy = RobotProxy(env, fk)
@@ -370,7 +414,8 @@ def main():
             for case in args.cases:
                 write_json(args.out/'status.json', {'status': 'running', 'mode': 'wm', 'case': case, 'pid': os.getpid()})
                 initial = json.loads((args.out/f'baseline-{case:02d}/initial.json').read_text())
-                results.append(rollout(env, policy, pre, post, fk, proxy, worker, args, case, 'wm', initial))
+                previous = completed_or_archive(args.out, 'wm', case) if args.resume else None
+                results.append(previous or rollout(env, policy, pre, post, fk, proxy, worker, args, case, 'wm', initial))
                 report(args.out, results)
         write_json(args.out/'status.json', {'status': 'complete', 'results': results})
     except BaseException:

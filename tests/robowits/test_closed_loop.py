@@ -53,3 +53,29 @@ def test_initial_orientation_and_velocity_must_match():
     b = deepcopy(a)
     b['velocities'][0] = .01
     assert not same_state(a, b)
+
+
+def test_resume_rejects_changed_weights_or_scenes():
+    import pytest
+    from robowits.closed_loop import validate_resume_protocol
+    original = {'cases': [10, 11], 'policy_weights_sha256': 'original', 'max_steps': 1000}
+    validate_resume_protocol(original, dict(original, wap_commit='resume-only-fix'))
+    for key, value in [('cases', [11, 12]), ('policy_weights_sha256', 'changed'), ('max_steps', 120)]:
+        with pytest.raises(ValueError, match='protocol'):
+            validate_resume_protocol(original, dict(original, **{key: value}))
+
+
+def test_resume_preserves_completed_and_archives_interrupted(tmp_path):
+    import json
+    from robowits.closed_loop import completed_or_archive
+    folder = tmp_path/'wm-10'
+    folder.mkdir()
+    record = {'status': 'complete', 'success': False}
+    (folder/'result.json').write_text(json.dumps(record))
+    assert completed_or_archive(tmp_path, 'wm', 10) == record
+    (folder/'result.json').write_text('{"status":"running"}')
+    (folder/'evidence.txt').write_text('preserve me')
+    assert completed_or_archive(tmp_path, 'wm', 10) is None
+    assert not folder.exists()
+    archived = next((tmp_path/'interrupted').iterdir())
+    assert (archived/'evidence.txt').read_text() == 'preserve me'

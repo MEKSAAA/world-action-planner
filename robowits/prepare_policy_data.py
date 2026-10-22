@@ -11,7 +11,7 @@ from .geometry import Marvin, BASE, transform
 
 
 def ee14(fk, states):
-    """Batched world-frame Gripper_Tip FK, native Rpos,Lpos,Rrot,Lrot,Rgrip,Lgrip."""
+    """Base-relative Gripper_Tip FK, native Rpos,Lpos,Rrot,Lrot,Rgrip,Lgrip."""
     states = np.asarray(states)
     if states.ndim != 2 or states.shape[1] != 16 or not np.isfinite(states).all():
         raise ValueError('Expected finite (N,16) joint states/targets')
@@ -40,7 +40,7 @@ def ee14(fk, states):
             raise ValueError('Disconnected FK tree')
         pending = rest
     right, left = (links[f'Gripper_Tip_{side}'] for side in ('R', 'L'))
-    return np.column_stack((right[:, :3, 3], left[:, :3, 3],
+    return np.column_stack((right[:, :3, 3]-BASE, left[:, :3, 3]-BASE,
                             Rotation.from_matrix(right[:, :3, :3]).as_rotvec(),
                             Rotation.from_matrix(left[:, :3, :3]).as_rotvec(),
                             states[:, 7], states[:, 15])).astype(np.float32)
@@ -104,7 +104,7 @@ def main():
         info['features'][key].update(shape=[14], names=names)
     (out/'meta/info.json').write_text(json.dumps(info, indent=2))
     (out/'conversion.json').write_text(json.dumps({'source': str(source), 'urdf': str(args.urdf.resolve()),
-        'stats_episodes': args.stats_episodes, 'format': 'EE_ABS/EE, world-frame Gripper_Tip, canonical rotation vector',
+        'stats_episodes': args.stats_episodes, 'format': 'EE_ABS/EE, base-relative Gripper_Tip, canonical rotation vector',
         'videos': 'unchanged, symlinked; timestamps and episode numbering preserved'}, indent=2))
     print('Complete:', out)
 
