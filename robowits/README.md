@@ -305,3 +305,9 @@ and writes `RUN/report.md` and `policy-experiment-status.json` throughout the ru
 This local validation is separate from the upstream trainer's Slurm callback;
 `validate_policy_local` excludes padded action targets and samples both held-out
 episodes uniformly. Action prediction error is never reported as task success.
+
+`python -m robowits.replay_contacts RUN --modes baseline wm` replays saved actions,
+requires initial states and each measured joint state to match the recorded rollout,
+and records native contact forces for lemon and the boundary blocks. It distinguishes
+no finger contact from contact without lifting. Wall contact counts are not collision
+failure counts because intentional block manipulation is part of this task.

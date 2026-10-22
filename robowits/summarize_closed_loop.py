@@ -77,7 +77,7 @@ def main():
               '现有 PI05 是多任务 EE_ABS 策略。本实验两组每 30 步重规划，区别于其默认 50 步配置。预测时长 1 秒，仅按图像内 lemon 与目标距离评分；无法充分衡量移开障碍物的长期收益。', '',
               '评分器遇到 lemon 遮挡、消失或重复时回退候选 0。若可比较次数很少或改选次数为零，应先解决观测/评分覆盖率问题，不能把结果解释为世界模型规划有效。', '',
               '配对初始状态和独立机器人投影对真实场景无修改均在运行时检查。没有使用任务物体的真实未来进行候选评分。']
-    for filename, title in (('failure-review.md', '人工失败阶段复核'), ('runtime-notes.md', '共享机器耗时说明')):
+    for filename, title in (('failure-review.md', '人工失败阶段复核'), ('contact-review.md', '原生接触与动作重放复核'), ('runtime-notes.md', '共享机器耗时说明')):
         if (root/filename).exists():
             lines += ['', f'[{title}]({filename})']
     (root/'audit.md').write_text('\n'.join(lines)+'\n')

@@ -30,7 +30,7 @@ def render(root, pilot, trained, cases, training_log, status):
              '成功仅依据 Genesis131 原生环境判据。进度分、视频预测质量和训练 loss 均不等于成功率。', '',
              '## 原有策略检查', '',
              '现有 PI05 正式基线固定场景 10–14：0/5 成功。ACT 的独立开发场景 0–4：0/5 成功。', '',
-             f'[PI05 配对实验](paired-five/report.md) · [原策略失败复核](paired-five/failure-review.md) · [ACT 结果](act-development-check/eval_info.json)', '',
+             '[PI05 配对实验](paired-five/report.md) · [原策略失败复核](paired-five/failure-review.md) · [原生接触复核](paired-five/contact-review.md) · [ACT 结果](act-development-check/eval_info.json)', '',
              '## Lemon 单任务微调', '',
              '从现有 PI05 开始，只更新动作模块；45 条训练轨迹（105–149），2 条验证轨迹（103/104）；100–102 不参与。批量 8，固定 2,000 步。EE 位置以机器人基座为原点，并与实际环境观测和原生 IK 验证。']
     if training_log.exists():
@@ -54,7 +54,7 @@ def render(root, pilot, trained, cases, training_log, status):
         completed = [r for r in records if r.get('status') == 'complete']
         if completed:
             lines += ['', f"{label}：已完成 {len(completed)}/{len(cases)}，其中 {sum(r['success'] for r in completed)}/{len(completed)} 成功。"]
-    lines += ['', f'[微调策略配对报告]({trained.name}/report.md) · [逐回合证据与额外耗时]({trained.name}/audit.md)', '',
+    lines += ['', f'[微调策略配对报告]({trained.name}/report.md) · [逐回合证据与额外耗时]({trained.name}/audit.md) · [接触与失败阶段]({trained.name}/contact-review.md)', '',
               '## 耗时和结论边界', '',
               '机器同时存在其他计算任务，墙钟耗时不是独占 GPU 吞吐量。[共享机器说明](paired-five/runtime-notes.md)。世界模型评分仅看一秒后图像中的 lemon—目标距离，不能充分评价移障的长期价值；必须同时查看可评分次数与实际改选次数。', '',
               '三个固定场景只支持小样本探索，不能宣称稳定成功或总体成功率提高。若两组都失败，结论就是本次设置没有验证出收益。', '',
@@ -144,6 +144,10 @@ def main():
             b = read(trained/f'baseline-{case:02d}/initial.json')
             if not same_state(a, b):
                 raise RuntimeError(f'Original and finetuned initial states differ for case {case}')
+        update('闭环完成，复核原生接触与失败阶段')
+        with (root/'finetuned-contact-replay.log').open('w') as stream:
+            subprocess.run([sim_python, '-m', 'robowits.replay_contacts', str(trained), '--modes', 'baseline', 'wm'],
+                           cwd=ROOT, env=env, stdout=stream, stderr=subprocess.STDOUT, check=True)
         for directory in (pilot, trained):
             subprocess.run([sim_python, '-m', 'robowits.summarize_closed_loop', str(directory)], cwd=ROOT, env=env, check=True)
         update('全部完成')
