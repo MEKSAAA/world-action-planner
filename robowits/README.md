@@ -295,3 +295,13 @@ Episodes 100–102 remain unused. Image timestamps and pixel values are unchange
 The simulator's fixed initial scenes are a separate evaluation set, not source
 episode numbers. Training loss is not evidence of task success: evaluate the
 resulting checkpoint in Genesis131 after training.
+
+For the 2026-10-22 run, `robowits.finish_policy_experiment --root RUN --cases 10 11 12`
+waits for the recorded training process and original five-pair pilot, checks that
+the final checkpoint is step 2000, runs local held-out action validation, and then
+runs a three-pair pilot with the finetuned policy. The case list is recorded before
+seeing finetuned rollout results. It verifies initial states across policy versions
+and writes `RUN/report.md` and `policy-experiment-status.json` throughout the run.
+This local validation is separate from the upstream trainer's Slurm callback;
+`validate_policy_local` excludes padded action targets and samples both held-out
+episodes uniformly. Action prediction error is never reported as task success.
