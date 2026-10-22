@@ -200,3 +200,54 @@ split is episodes 100–102 holdout, 103–104 validation and 105–149 training
 The experiment uses four windows per held-out episode (12 total), 80 history +
 40 future frames at 20 Hz, seed 0, PSNR/SSIM/LPIPS and region MSE. It evaluates
 world-model prediction given measured robot motion, not task-success rate.
+
+## Paired closed-loop lemon pilot
+
+`robowits.closed_loop` runs the available LeRobot PI05 policy in the unmodified
+Genesis131 task, then repeats the same evaluation scenes with WM action selection.
+This is a small integration experiment, not the unreleased WAP planner.
+
+- Default evaluation scenes: native seed JSON indices 10–14, seeds 1010–1014.
+  Development checks used indices 0 and 1. Do not choose cases by observed success.
+- Both arms replan every 30 native steps using candidate 0 from the same seeded
+  PI05 sampler. The model generates 50 actions; only the first 30 are executed.
+  This matched cadence differs from the checkpoint's default 50-step cadence.
+- At steps 90,180,...,900 (if still running), the WM arm samples a second candidate.
+  Each candidate gets 80 history / 20 future frames at 20 Hz. History is sampled
+  from actual observations; unavailable initial history repeats the first frame.
+- Future skeletons use the same FK renderer as finetuning, driven by the native
+  controller in a separate robot-only scene. No task objects are present there.
+  The evaluated scene is checked for mutation before/after candidate projection.
+- Fixed image-only score: mean negative normalized 2D lemon/target centroid distance
+  in the last five predicted ego frames. HSV yellow range 12–40 (S≥80,V≥35), green
+  40–90 (S≥80,V≥35). Minimum component areas: yellow 4 pixels, green 12 pixels.
+  Multiple yellow objects or missing objects/targets make a frame invalid. At least
+  three frames must be valid. Both candidates must be valid, and candidate 1 must
+  improve by >0.02 image widths; otherwise execute candidate 0. This simple score
+  is not a success detector and does not fully value obstacle removal.
+- Success comes exclusively from Genesis131's native termination/success flag.
+  Simulator object state is saved for initial-state matching and failure diagnosis,
+  never provided to the policy, WM or candidate scorer. Object orientation, robot
+  position/velocity and object positions are checked when pairing initial states.
+- Save each actual execution video, native actions, joint states, sampled object
+  diagnostics, candidate predictions, decisions, timings and a Markdown report.
+  Infrastructure errors remain errors, never counted as task failures.
+
+Run from this WAP root using the Genesis131 Python, setting its asset root and
+EGL environment as in that checkout's `LOCAL_SETUP.md`. Keep the WM on another GPU
+and use the separate WAP Python for the worker:
+
+```bash
+CUDA_VISIBLE_DEVICES=1 PYOPENGL_PLATFORM=egl GS_GYM_ASSET_PATHS=/path/to/assets \
+  /path/to/Genesis131/.venv/bin/python -m robowits.closed_loop \
+  --sim-root /path/to/Genesis131 --policy /path/to/ckpt/pi05 \
+  --eval-json /path/to/Genesis131/dataset/robowits/eval_dataset_seed/03.json \
+  --urdf /path/to/assets/hf_assets/marvin_bimanual/urdf/marvin_pika.urdf \
+  --wm-python /path/to/wm-venv/bin/python --wm-checkpoint /path/to/step2000.ckpt \
+  --ckpts "$CKPTS" --wan "$WAN" --wm-gpu 0 --out /data/lemon-paired-run
+```
+
+Use a new output directory. `--cases 1 --max-steps 120` is an integration check,
+not task-success evaluation. `--baseline-only` runs the matched policy without WM.
+Full pilot runtime is dominated by up to 100 WM predictions (two per selection,
+ten selections per episode, five episodes), approximately 1.5 hours on this machine.

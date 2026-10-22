@@ -1,0 +1,50 @@
+{
+  "scope": "120-step development case 1 integration check; not task-success evidence",
+  "artifact_root": "/data/mjw/world-action-planner/robowits-closed-loop/20261022/integration-v2",
+  "results": [
+    {
+      "case": 1,
+      "mode": "baseline",
+      "seed": 1001,
+      "status": "complete",
+      "success": false,
+      "steps": 120,
+      "max_score": 0.5,
+      "failure_type": "\u672a\u68c0\u6d4b\u5230\u95ed\u722a\u63a5\u8fd1\u4e14\u62ac\u8d77\u7269\u4f53\uff08\u6293\u7a7a/\u53d7\u963b\u539f\u56e0\u9700\u770b\u89c6\u9891\uff09",
+      "policy_seconds": 1.4273420950048603,
+      "wm_seconds": 0.0,
+      "proxy_seconds": 0.0,
+      "wm_decisions": 0,
+      "changed_choices": 0,
+      "wall_seconds": 9.335462159011513
+    },
+    {
+      "case": 1,
+      "mode": "wm",
+      "seed": 1001,
+      "status": "complete",
+      "success": false,
+      "steps": 120,
+      "max_score": 0.5,
+      "failure_type": "\u672a\u68c0\u6d4b\u5230\u95ed\u722a\u63a5\u8fd1\u4e14\u62ac\u8d77\u7269\u4f53\uff08\u6293\u7a7a/\u53d7\u963b\u539f\u56e0\u9700\u770b\u89c6\u9891\uff09",
+      "policy_seconds": 1.3898596539802384,
+      "wm_seconds": 88.38805078499718,
+      "proxy_seconds": 6.5671018559951335,
+      "wm_decisions": 1,
+      "changed_choices": 0,
+      "wall_seconds": 102.07469403499272
+    }
+  ],
+  "paired_action_max_abs_difference": 0.0,
+  "paired_joint_max_abs_difference": 0.0,
+  "native_scene_unmodified_by_robot_projection": true,
+  "unit_tests": "15 passed",
+  "formal_cases": [
+    10,
+    11,
+    12,
+    13,
+    14
+  ],
+  "formal_run_complete": false
+}
