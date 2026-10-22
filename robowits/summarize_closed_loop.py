@@ -23,6 +23,7 @@ def main():
              '| 场景 | 原策略成功 | WM 筛选成功 | 原策略耗时 / s | WM 耗时 / s | 额外耗时 / s | 可比较 / 筛选次数 | 改选次数 |',
              '|---|---|---|---:|---:|---:|---:|---:|']
     pairs = []
+    candidate_separations, comparable_gains = [], []
     for case in protocol['cases']:
         a, b = rows.get(('baseline', case)), rows.get(('wm', case))
         if not (a and b):
@@ -30,6 +31,16 @@ def main():
         decisions = json.loads((root/f'wm-{case:02d}/decisions.json').read_text())
         wm = [d for d in decisions if d['wm_used']]
         comparable = sum(all(s['valid'] for s in d['scores']) for d in wm)
+        for decision in wm:
+            candidate_root = root/f'wm-{case:02d}'
+            a_path = candidate_root/f"decision-{decision['chunk']:03d}-candidate-0/actions.npy"
+            b_path = candidate_root/f"decision-{decision['chunk']:03d}-candidate-1/actions.npy"
+            first, second = np.load(a_path), np.load(b_path)
+            distances = np.concatenate([np.linalg.norm(first[:, s]-second[:, s], axis=1)
+                                        for s in (slice(0, 3), slice(3, 6))])
+            candidate_separations.append(float(distances.mean()))
+            if all(s['valid'] for s in decision['scores']):
+                comparable_gains.append(decision['scores'][1]['score']-decision['scores'][0]['score'])
         delta = b['wall_seconds']-a['wall_seconds']
         pairs.append((a, b, delta))
         lines.append(f"| {case} | {'成功' if a['success'] else '失败'} | {'成功' if b['success'] else '失败'} | {a['wall_seconds']:.1f} | {b['wall_seconds']:.1f} | {delta:.1f} | {comparable}/{len(wm)} | {b['changed_choices']} |")
@@ -41,6 +52,10 @@ def main():
         lines += ['', f'完整配对 {n} 组：原策略 {sa}/{n} 成功；WM 筛选 {sb}/{n} 成功，差值 {(sb-sa)/n*100:+.1f} 个百分点。',
                   '', f'由失败变成功 {rescued} 组；由成功变失败 {harmed} 组。平均额外耗时 {np.mean([d for _, _, d in pairs]):.1f} 秒/回合。',
                   '', '这是小样本探索结果，不能据此断言总体成功率提高。耗时含回合重置、策略推理、模拟器执行、录像以及 WM/机器人投影计算；不含首次模型加载。']
+    if candidate_separations:
+        lines += ['', f'候选动作不是同一数组：双臂末端目标位置的平均差异为 {np.mean(candidate_separations)*100:.2f} cm（对所有完整配对中的候选时刻取平均，非实际执行轨迹差异）。']
+    if comparable_gains:
+        lines += ['', f'双方均可评分时，候选 1 的最大分数增益为 {max(comparable_gains):.5f} 图像宽度；预设改选门槛为 0.02。物体未移动、遮挡和预测误差都可能使该短时距离分数缺乏区分度。']
     lines += ['', '## 逐回合证据', '', '以下失败标签为自动诊断，抓空、碰撞、搬运掉落的最终归因应结合录像；“最高进度 0.5”不等于 50% 成功率。']
     for (mode, case), r in sorted(rows.items()):
         rel = f'{mode}-{case:02d}'

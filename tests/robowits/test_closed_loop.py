@@ -79,3 +79,12 @@ def test_resume_preserves_completed_and_archives_interrupted(tmp_path):
     assert not folder.exists()
     archived = next((tmp_path/'interrupted').iterdir())
     assert (archived/'evidence.txt').read_text() == 'preserve me'
+
+
+def test_resume_accepts_only_identical_simulator_runtime():
+    import pytest
+    from robowits.closed_loop import validate_resume_protocol
+    original = {'sim_commit': 'old', 'sim_runtime_sha256': 'runtime-a'}
+    validate_resume_protocol(original, {'sim_commit': 'docs-only', 'sim_runtime_sha256': 'runtime-a'})
+    with pytest.raises(ValueError):
+        validate_resume_protocol(original, {'sim_commit': 'physics-change', 'sim_runtime_sha256': 'runtime-b'})

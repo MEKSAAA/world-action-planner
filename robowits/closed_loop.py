@@ -31,6 +31,17 @@ def file_sha256(path):
     return digest.hexdigest()
 
 
+def sim_runtime_sha256(root, revision):
+    if revision == 'HEAD' and subprocess.run(['git', 'diff', '--quiet', 'HEAD', '--', 'gs_gym',
+                                               'third_party/lerobot', 'pyproject.toml', 'uv.lock'], cwd=root).returncode:
+        raise ValueError('Simulator runtime has uncommitted modifications')
+    manifest = subprocess.check_output(['git', 'ls-tree', revision, '--', 'gs_gym',
+                                       'third_party/lerobot', 'pyproject.toml', 'uv.lock'], cwd=root)
+    if b'gs_gym' not in manifest or b'third_party/lerobot' not in manifest:
+        raise ValueError('Simulator revision lacks required runtime trees')
+    return hashlib.sha256(manifest).hexdigest()
+
+
 def write_json(path, value):
     temporary = path.with_suffix('.tmp')
     temporary.write_text(json.dumps(value, indent=2, ensure_ascii=False))
@@ -318,8 +329,11 @@ def validate_resume_protocol(previous, current):
     keys = ('sim_commit', 'eval_sha256', 'policy_weights_sha256', 'wm_checkpoint_sha256',
             'score_sha256', 'cases', 'max_steps', 'baseline_only', 'control_mode',
             'observation_mode', 'policy_chunk_executed', 'wm_future_frames',
-            'wm_history_frames', 'wm_fps', 'urdf', 'wan', 'ckpts')
+            'wm_history_frames', 'wm_fps', 'urdf', 'wan', 'ckpts', 'sim_runtime_sha256')
     changed = [k for k in keys if previous.get(k) != current.get(k)]
+    if ('sim_commit' in changed and previous.get('sim_runtime_sha256')
+            and previous['sim_runtime_sha256'] == current.get('sim_runtime_sha256')):
+        changed.remove('sim_commit')  # Unrelated experiment/docs commits do not change the runtime.
     if changed:
         raise ValueError(f'Resume would change experiment protocol: {changed}')
 
@@ -379,6 +393,7 @@ def main():
     cfg.pretrained_path = str(args.policy)
     protocol = {k: str(v) if isinstance(v, Path) else v for k, v in vars(args).items()}
     protocol.update(sim_commit=subprocess.check_output(['git', 'rev-parse', 'HEAD'], cwd=args.sim_root, text=True).strip(),
+                    sim_runtime_sha256=sim_runtime_sha256(args.sim_root, 'HEAD'),
                     wap_commit=subprocess.check_output(['git', 'rev-parse', 'HEAD'], cwd=ROOT, text=True).strip(),
                     eval_sha256=hashlib.sha256(args.eval_json.read_bytes()).hexdigest(),
                     wm_checkpoint_sha256=file_sha256(args.wm_checkpoint),
@@ -388,7 +403,11 @@ def main():
                     score_rule='closed_loop_score.py; yellow HSV 12:40, green HSV 40:90, margin .02',
                     score_sha256=hashlib.sha256((ROOT/'robowits/closed_loop_score.py').read_bytes()).hexdigest())
     if args.resume:
-        validate_resume_protocol(json.loads((args.out/'protocol.json').read_text()), protocol)
+        previous_protocol = json.loads((args.out/'protocol.json').read_text())
+        if 'sim_runtime_sha256' not in previous_protocol:
+            previous_protocol['sim_runtime_sha256'] = sim_runtime_sha256(args.sim_root, previous_protocol['sim_commit'])
+        validate_resume_protocol(previous_protocol, protocol)
+        protocol['resumed_from_sim_commit'] = previous_protocol['sim_commit']
         write_json(args.out/f'resume-protocol-{time.time_ns()}.json', protocol)
     else:
         write_json(args.out/'protocol.json', protocol)
@@ -430,4 +449,15 @@ def main():
 
 
 if __name__ == '__main__':
-    main()
+    try:
+        main()
+    except BaseException:
+        # Also expose initialization failures; never overwrite another live run's status.
+        if '--out' in sys.argv:
+            status_path = Path(sys.argv[sys.argv.index('--out')+1])/'status.json'
+            if status_path.exists():
+                status = json.loads(status_path.read_text())
+                if status.get('pid') == os.getpid():
+                    status.update(status='error', error=traceback.format_exc())
+                    write_json(status_path, status)
+        raise
