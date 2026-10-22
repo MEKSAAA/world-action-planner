@@ -251,3 +251,14 @@ Use a new output directory. `--cases 1 --max-steps 120` is an integration check,
 not task-success evaluation. `--baseline-only` runs the matched policy without WM.
 Full pilot runtime is dominated by up to 100 WM predictions (two per selection,
 ten selections per episode, five episodes), approximately 1.5 hours on this machine.
+
+Generate a separate Markdown audit with paired time differences, comparable
+prediction counts and execution contact sheets (also safe during an active run):
+
+```bash
+/path/to/Genesis131/.venv/bin/python -m robowits.summarize_closed_loop /data/lemon-paired-run
+```
+
+The audit excludes incomplete/error episodes from success-rate denominators.
+Contact sheets sample 12 frames and do not establish collision or grasp causes
+by themselves. Consult the full videos before assigning definitive failure labels.
