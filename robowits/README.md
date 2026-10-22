@@ -262,3 +262,29 @@ prediction counts and execution contact sheets (also safe during an active run):
 The audit excludes incomplete/error episodes from success-rate denominators.
 Contact sheets sample 12 frames and do not establish collision or grasp causes
 by themselves. Consult the full videos before assigning definitive failure labels.
+
+## Single-task policy data
+
+The available source dataset has 16D joint states/actions. Existing PI05 weights
+expect 14D EE state/action. `robowits.prepare_policy_data` converts measured states
+and commanded joint targets independently with the Marvin URDF, preserving every
+timestamp, episode number and source video. It writes a separate dataset and
+symlinks source videos. Source files are never modified.
+
+```bash
+python -m robowits.prepare_policy_data --source /path/to/RoboWits_lerobot_dataset \
+  --out /data/lemon-policy-ee --urdf /path/to/marvin_pika.urdf
+```
+
+The native order is R position, L position, R rotation vector, L rotation vector,
+R gripper width, L gripper width. Positions are world-frame `Gripper_Tip` poses;
+rotations are canonical axis-angle. `validate_geometry` checks both EE position
+and orientation against Genesis131 without advancing physics.
+
+Global action/state normalization uses only episodes 105–149 (45 lemon demos).
+For native LeRobot finetuning, pass episodes `[105,...,149,103,104]` in that order
+and `dataset.val_frac=0.04`; its per-task end-of-list split then holds out 103/104.
+Episodes 100–102 remain unused. Image timestamps and pixel values are unchanged.
+The simulator's fixed initial scenes are a separate evaluation set, not source
+episode numbers. Training loss is not evidence of task success: evaluate the
+resulting checkpoint in Genesis131 after training.

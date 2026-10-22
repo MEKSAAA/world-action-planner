@@ -9,6 +9,8 @@ from pathlib import Path
 import numpy as np
 from .data import Episodes
 from .geometry import Marvin
+from .prepare_policy_data import ee14
+from scipy.spatial.transform import Rotation
 
 
 def main():
@@ -36,6 +38,7 @@ def main():
     robot.init_dof_indices()
     model = Marvin(args.urdf)
     errors = []
+    ee_position_errors, ee_rotation_errors = [], []
     try:
         for index in np.linspace(0, len(state)-1, 7).astype(int):
             s = state[index]
@@ -43,12 +46,23 @@ def main():
             robot.robot_entity.set_dofs_position(torch.tensor(q, dtype=torch.float32),
                                                 dofs_idx_local=robot._seq_pos_to_dof.tolist())
             links = model.forward(s)
+            converted = ee14(model, s[None])[0]
+            for side, pos_slice, rot_slice in (('right', slice(0, 3), slice(6, 9)),
+                                               ('left', slice(3, 6), slice(9, 12))):
+                actual = getattr(robot, f'{side}_ee_pose').numpy().reshape(7)
+                ee_position_errors.append(float(np.linalg.norm(actual[:3]-converted[pos_slice])))
+                actual_rot = Rotation.from_quat(actual[[4, 5, 6, 3]])
+                predicted_rot = Rotation.from_rotvec(converted[rot_slice])
+                ee_rotation_errors.append(float((actual_rot.inv()*predicted_rot).magnitude()))
             for name, pose in links.items():
                 actual = robot.robot_entity.get_link(name).get_pos(relative=False).numpy().reshape(-1, 3)[0]
                 errors.append(float(np.linalg.norm(actual-pose[:3, 3])))
         report = {'genesis_version': version('genesis-world'), 'episode': args.episode,
                   'samples': 7, 'link_comparisons': len(errors), 'physics_steps': 0,
-                  'max_link_error_m': max(errors), 'passed': max(errors) < 1e-5}
+                  'max_link_error_m': max(errors),
+                  'max_ee_position_error_m': max(ee_position_errors),
+                  'max_ee_rotation_error_rad': max(ee_rotation_errors),
+                  'passed': max(errors+ee_position_errors+ee_rotation_errors) < 1e-5}
         args.out.parent.mkdir(parents=True, exist_ok=True)
         args.out.write_text(json.dumps(report, indent=2))
         print(report)
