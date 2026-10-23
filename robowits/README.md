@@ -250,7 +250,9 @@ CUDA_VISIBLE_DEVICES=1 PYOPENGL_PLATFORM=egl GS_GYM_ASSET_PATHS=/path/to/assets 
 Use a new output directory. `--cases 1 --max-steps 120` is an integration check,
 not task-success evaluation. `--baseline-only` runs the matched policy without WM.
 After interruption, repeat the identical command with `--resume`. Model hashes,
-scene file, simulation revision and scoring protocol must match. Completed episodes
+scene file, simulator runtime trees and scoring protocol must match. Unrelated
+experiment/documentation commits may differ; both commits and the matching runtime
+fingerprint are recorded. Uncommitted runtime changes are rejected. Completed episodes
 are retained; incomplete episodes are archived and restarted from their initial
 state. A new worker queue prevents stale predictions from being reused.
 Full pilot runtime is dominated by up to 100 WM predictions (two per selection,

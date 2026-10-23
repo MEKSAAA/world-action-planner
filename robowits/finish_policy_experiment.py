@@ -37,6 +37,10 @@ def render(root, pilot, trained, cases, training_log, status):
         matches = re.findall(r'step:\d+[^\n]*', training_log.read_text(errors='replace'))
         if matches:
             lines += ['', f'最近训练记录：`{matches[-1]}`']
+    development = read(root/'finetuned-500-development/status.json', {})
+    if development.get('status') == 'complete':
+        rows = development['results']
+        lines += ['', f"500 步中间快照开发检查：{sum(r['success'] for r in rows)}/{len(rows)} 成功（场景 0–2）。[开发检查报告](finetuned-500-development/report.md)。该检查不代替最终固定场景评估。"]
     lines += ['', '先前世界坐标版本的数据与训练试跑已标为无效，不用于评估；GPU 显存不足的试跑也不算完成训练。有效训练路径：`pi05-lemon-base-expert-2k/`。', '',
               '[留出轨迹动作预测检查](policy-validation.json)（完成训练后本地运行，不作为任务成功率）。', '',
               '## 固定场景的策略比较', '',
@@ -116,7 +120,9 @@ def main():
                       '--checkpoint', str((checkpoint/'pretrained_model').resolve()),
                       '--data', str(root/'policy-ee-base-data'), '--out', str(root/'policy-validation.json')]
         with (root/'policy-validation.log').open('w') as stream:
-            subprocess.run(validation, cwd=ROOT, env=env, stdout=stream, stderr=subprocess.STDOUT, check=True)
+            # Training has exited, so its GPU has room even if GPU1 has other users.
+            subprocess.run(validation, cwd=ROOT, env=dict(env, CUDA_VISIBLE_DEVICES='0'),
+                           stdout=stream, stderr=subprocess.STDOUT, check=True)
         while read(pilot/'status.json', {}).get('status') != 'complete':
             current = read(pilot/'status.json', {})
             if current.get('status') == 'error' or not alive(current.get('pid', -1)):
