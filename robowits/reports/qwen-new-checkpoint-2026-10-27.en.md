@@ -1,5 +1,7 @@
 # WAP on RoboWits: released pi05 and illustrated Qwen value scoring
 
+> Follow-up full episodes are complete: both execution horizons reached 1,000 steps; the 10-action condition grasped and transported near the target without placement, while the 50-action condition did not lift meaningfully. See the [full-episode report](chunru-full-episode-2026-10-27.en.md).
+
 **The 50-step review is complete and paused. No selection benefit was observed:
 all ten candidates scored 0.95, all five choices retained candidate zero, and
 all three execution trajectories were identical.** This experiment uses the pi05 checkpoint newly shared by Chunru and local

@@ -192,7 +192,8 @@ def main():
     p.add_argument('--execute-steps',type=int,default=10);p.add_argument('--num-candidates',type=int,default=2)
     p.add_argument('--selection-margin',type=float,default=.1);p.add_argument('--wm-gpu',default='0')
     args=p.parse_args()
-    if not 1<=args.execute_steps<=30 or min(args.max_steps,args.stop_after_steps)<1 or args.num_candidates<2:p.error('Invalid action/review budget')
+    max_execute = 50 if args.mode == 'baseline' else 30
+    if not 1<=args.execute_steps<=max_execute or min(args.max_steps,args.stop_after_steps)<1 or args.num_candidates<2:p.error('Invalid action/review budget')
     args.out.mkdir(parents=True,exist_ok=False);args.resume=False
     sys.path[:0]=[str(args.sim_root),str(args.sim_root/'third_party/lerobot/src')]
     import torch,gs_gym

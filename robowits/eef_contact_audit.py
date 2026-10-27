@@ -48,10 +48,12 @@ def audit(env, directory, source_name, result_override=None):
     else:
         diagnosis = 'lift_without_successful_placement_review_video'
     summary = dict(success=result['success'], steps=len(heights), max_joint_error=max_error,
+                   terminated=bool(terminated), truncated=bool(truncated),
                    finger_lemon_contact_frames=finger_frames, robot_wall_contact_frames=wall_frames,
                    maximum_lift_m=lift, minimum_lemon_z_m=min(heights), failure_stage=diagnosis,
                    contact_force_threshold_N=.01, lift_threshold_m=.025)
-    write_json(directory/'contact-replay.json', dict(summary=summary, events=events, heights_m=heights))
+    write_json(directory/'contact-replay.json', dict(summary=summary, events=events, heights_m=heights,
+                                                    final_state=snapshot(env)))
     return summary
 
 
@@ -98,7 +100,8 @@ def main():
         import gs_gym
         protocol = json.loads((args.run/'protocol.json').read_text())
         env = gs_gym.get_task_class('robowits/03-gap-retrieve-v0')(
-            control_mode='EE_DELTA', observation_mode='JOINT', max_episode_steps=protocol['max_steps'],
+            control_mode=protocol.get('control_mode', 'EE_DELTA'),
+            observation_mode=protocol.get('observation_mode', 'JOINT'), max_episode_steps=protocol['max_steps'],
             genesis_backend='cpu', device='cpu', show_viewer=False, camera_type='rasterizer',
             eval_dataset_json=protocol['eval_json'])
         try:
