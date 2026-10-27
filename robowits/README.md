@@ -1,3 +1,11 @@
+# Amber lemon EEF checkpoint: current action-selection implementation
+
+For checkpoint `lemon_eef_b64/29999` on `libero-recipe-eef`, use
+[EEF_ACTION_SELECTION.md](EEF_ACTION_SELECTION.md) and `robowits.eef_loop`.
+It samples VLA actions, imagines all candidates with WAP, uses a VLM outcome judge,
+and executes five EEF-delta steps before replanning. The LeRobot pilot below is
+a separate legacy checkpoint interface and must not load this OpenPI checkpoint.
+
 # RoboWits world-model probe and finetuning
 
 This implementation follows RobertCHU01/world-action-planner's

@@ -1,0 +1,29 @@
+{
+  "date": "2026-10-27",
+  "sim_branch": "libero-recipe-eef",
+  "sim_commit_short": "db6acf3",
+  "checkpoint": "/data/robowits-checkpoints/pi05_robowits_subgoal_eef/lemon_eef_b64/29999",
+  "openpi_config": "pi05_robowits_subgoal_eef",
+  "scope": "real model integration, not task-success benchmarking",
+  "run": "/data/mjw/world-action-planner/eef-loop/20261027/smoke-v1",
+  "case": 10,
+  "candidates_per_decision": 2,
+  "completed_decisions": 2,
+  "wm_predictions": 4,
+  "vlm_reward_calls": 2,
+  "executed_native_steps": 10,
+  "selected_indices": [0, 0],
+  "success": false,
+  "wall_seconds_excluding_initial_model_load": 230.86085481499322,
+  "candidate_zero_repeat_max_abs_difference": 0.0,
+  "first_candidate_pair_max_abs_difference": 0.0008376594632863998,
+  "amber_worktree_clean": true,
+  "amber_overlay_source_files_unchanged": 60,
+  "checkpoint_files_with_unchanged_size_and_mtime": 21,
+  "tests": {"passed": 24, "skipped": 1, "skip_reason": "Hydra unavailable in simulator test environment; actual WM worker used its separate Hydra environment"},
+  "limitations": [
+    "VLM claimed grasp/lift progress not supported by inspected near-static predicted frames; reward calibration remains unvalidated.",
+    "WM requires one second; ten-step VLA candidates cover 0.333 seconds, with final-target holding used to pad WM conditioning. Judge sees only first six frames (0.30 seconds).",
+    "Two cycles with no alternate selection do not establish a success-rate benefit or a full matched control experiment."
+  ]
+}

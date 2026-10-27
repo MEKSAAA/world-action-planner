@@ -32,10 +32,20 @@ def visual_score(prediction):
             'meaning': 'negative 2D lemon-target distance; not task success'}
 
 
-def choose(scores, margin=.02):
-    # Conservative fallback: compare only if both candidates are observable.
-    if len(scores) != 2:
-        raise ValueError('Pilot requires exactly two candidates')
-    if all(s['valid'] for s in scores) and scores[1]['score'] > scores[0]['score'] + margin:
-        return 1
-    return 0
+def choose(scores, margin=.02, require_baseline=True):
+    """Rank any number of valid predictions; ties favor the first candidate.
+
+    Legacy callers require a valid candidate 0 for conservative comparisons.
+    The action loop instead picks the best valid candidate, even if 0 is invalid.
+    If every prediction is invalid, fall back to candidate 0.
+    """
+    if not scores or not np.isfinite(margin) or margin < 0:
+        raise ValueError('Require nonempty scores and a finite nonnegative margin')
+    valid = [i for i, s in enumerate(scores) if s.get('valid')
+             and s.get('score') is not None and np.isfinite(s['score'])]
+    if not valid or (require_baseline and 0 not in valid):
+        return 0
+    best = max(valid, key=lambda i: scores[i]['score'])
+    if 0 in valid and scores[best]['score'] <= scores[0]['score'] + margin:
+        return 0
+    return best
