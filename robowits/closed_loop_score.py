@@ -46,6 +46,9 @@ def choose(scores, margin=.02, require_baseline=True):
     if not valid or (require_baseline and 0 not in valid):
         return 0
     best = max(valid, key=lambda i: scores[i]['score'])
-    if 0 in valid and scores[best]['score'] <= scores[0]['score'] + margin:
-        return 0
+    if 0 in valid:
+        improvement = scores[best]['score'] - scores[0]['score']
+        # Decimal scores such as .45-.35 must not spuriously exceed .10.
+        if improvement <= margin or np.isclose(improvement, margin, rtol=0, atol=1e-12):
+            return 0
     return best

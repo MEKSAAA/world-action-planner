@@ -110,7 +110,8 @@ def run_episode(env, policy, wm, judge, proxy, fk, args):
     mode = getattr(args, 'mode', 'selection')
     reference = getattr(args, 'reference_run', None)
     reference_decisions = reference_trajectory = None
-    imagination_reference = getattr(args, 'reuse_imagination_from', None)
+    recovery = getattr(args, 'recover_from', None)
+    imagination_reference = recovery or getattr(args, 'reuse_imagination_from', None)
     imagined_decisions = (json.loads((imagination_reference/'decisions.json').read_text())
                          if imagination_reference is not None else [])
     if reference is not None:
@@ -123,6 +124,7 @@ def run_episode(env, policy, wm, judge, proxy, fk, args):
     all_actions, all_joints, decisions = [], [], []
     result = {'status': 'running', 'success': None, 'steps': 0}
     started = time.monotonic()
+    step_limit = min(args.max_steps, getattr(args, 'stop_after_steps', None) or args.max_steps)
     with imageio.get_writer(args.out/'execution.mp4', fps=1/env.dt, codec='libx264') as writer:
         def observe():
             joints = state16(env._robot)
@@ -135,7 +137,7 @@ def run_episode(env, policy, wm, judge, proxy, fk, args):
             goal = point = None
             valid = False
             last_goal_step = -args.subgoal_steps
-            while env._step_count < args.max_steps:
+            while env._step_count < step_limit:
                 directory = args.out/f'decision-{len(decisions):04d}'
                 directory.mkdir()
                 reference_decision = None
@@ -163,7 +165,8 @@ def run_episode(env, policy, wm, judge, proxy, fk, args):
                 if reference_decision is not None:
                     if getattr(args, 'reuse_baseline_candidate_zero', False):
                         candidates = anchor_candidate_zero(reference,len(decisions),inp,seeds,candidates,directory)
-                    if imagination_reference is not None:
+                    if imagination_reference is not None and (recovery is None or
+                            (imagination_reference/f'decision-{len(decisions):04d}/candidates.npy').exists()):
                         candidates = anchor_candidate_zero(imagination_reference,len(decisions),inp,seeds,candidates,directory,
                                                            all_candidates=True)
                     first = np.load(reference/f'decision-{len(decisions):04d}/candidates.npy')[0]
@@ -244,7 +247,7 @@ def run_episode(env, policy, wm, judge, proxy, fk, args):
                                 all_joints[-1],reference_trajectory['joints'][step],atol=1e-5,rtol=0):
                             raise RuntimeError('Paired executed trajectory diverged without an alternative selection')
                     result.update(steps=env._step_count, success=bool(info['is_success']))
-                    if terminated or truncated or env._step_count >= args.max_steps:
+                    if terminated or truncated or env._step_count >= step_limit:
                         break
                 write_json(args.out/'status.json', {'status': 'running', 'steps': env._step_count,
                                                    'decisions': len(decisions), 'pid': os.getpid()})
@@ -252,6 +255,8 @@ def run_episode(env, policy, wm, judge, proxy, fk, args):
                 if terminated or truncated:
                     break
             result['status'] = 'complete'
+            if not (terminated or truncated) and env._step_count < args.max_steps:
+                result.update(status='paused_for_review', success_at_stop=result['success'], success=None)
         except BaseException:
             result.update(status='error', success=None, error=traceback.format_exc())
             raise
@@ -276,6 +281,8 @@ def main():
     p.add_argument('--execute-steps', type=int, default=5)
     p.add_argument('--subgoal-steps', type=int, default=50)
     p.add_argument('--max-steps', type=int, default=1000)
+    p.add_argument('--stop-after-steps', type=int, help='Pause for human review; unfinished episodes are not task failures')
+    p.add_argument('--recover-from', type=Path, help='Interrupted forced-zero trial; replay verified inputs and reuse existing predictions')
     p.add_argument('--reference-run', type=Path, help='Completed baseline; reuse matched subgoals and audit the unchanged prefix')
     p.add_argument('--reuse-baseline-candidate-zero', action='store_true', help='Pair on baseline draw after exact input/prompt/seed checks; retain fresh draws for audit')
     p.add_argument('--reuse-imagination-from', type=Path, help='Completed control trial; reuse exact matching WM inputs and judgments with verified provenance')
@@ -284,6 +291,10 @@ def main():
     p.add_argument('--selection-margin', type=float, default=0., help='Require this score improvement over valid candidate 0')
     p.add_argument('--force-candidate-zero', action='store_true')
     args = p.parse_args()
+    if args.stop_after_steps is not None and args.stop_after_steps < 1:
+        p.error('Review step limit must be positive')
+    if args.recover_from is not None and (args.reuse_imagination_from is not None or not args.force_candidate_zero):
+        p.error('Recovery is for forced-zero trials and cannot be combined with another imagination source')
     if args.num_candidates < 2 or not 1 <= args.execute_steps <= 10 or min(args.subgoal_steps, args.max_steps) < 1 or not np.isfinite(args.selection_margin) or args.selection_margin < 0:
         p.error('Require >=2 candidates, 1–10 execution steps, and positive budgets')
     args.out = args.out.resolve()
@@ -308,13 +319,31 @@ def main():
                         'execute_steps','subgoal_steps','max_steps'):
                 if protocol[key] != reference_protocol[key]:
                     raise ValueError(f'Paired baseline protocol differs: {key}')
-        if args.reuse_imagination_from is not None:
-            source_protocol = json.loads((args.reuse_imagination_from/'protocol.json').read_text())
-            for key in ('wm_sha256','seed','case','eval_json','ckpts','wan','source_sha256','reward_mode','vlm_socket','sim_commit'):
+        reuse_source = args.recover_from or args.reuse_imagination_from
+        if reuse_source is not None:
+            source_protocol = json.loads((reuse_source/'protocol.json').read_text())
+            for key in ('wm_sha256','seed','case','eval_json','ckpts','wan','reward_mode','vlm_socket','sim_commit',
+                        'policy_checkpoint','execute_steps','subgoal_steps','max_steps','selection_margin'):
                 if protocol[key] != source_protocol[key]:
                     raise ValueError(f'Imagination reuse provenance differs: {key}')
-            if json.loads((args.reuse_imagination_from/'status.json').read_text())['status'] != 'complete':
-                raise ValueError('Imagination source must be complete')
+            for name, digest in protocol['source_sha256'].items():
+                # Recovery adds review/resume orchestration only. Action math,
+                # model inference and reward prompt must remain byte-identical.
+                if args.recover_from is not None and name == 'eef_loop.py':
+                    continue
+                if digest != source_protocol['source_sha256'][name]:
+                    raise ValueError(f'Imagination source code differs: {name}')
+            source_status = json.loads((reuse_source/'status.json').read_text())['status']
+            if args.recover_from is not None:
+                if source_status not in ('error','paused_for_review') or not source_protocol['force_candidate_zero']:
+                    raise ValueError('Recovery requires an interrupted forced-zero source')
+                write_json(args.out/'recovery.json', dict(source=str(reuse_source),
+                    original_driver_sha256=source_protocol['source_sha256']['eef_loop.py'],
+                    current_driver_sha256=protocol['source_sha256']['eef_loop.py'],
+                    method='Replay from reset with exact baseline trajectory checks; reuse only identical conditioning'))
+            elif source_status != 'complete':
+                if source_status != 'paused_for_review' or args.stop_after_steps is None or args.stop_after_steps > source_protocol.get('stop_after_steps',0):
+                    raise ValueError('Imagination source must cover the complete requested review window')
         write_json(args.out/'status.json', {'status': 'initializing', 'pid': os.getpid()})
         env = gs_gym.get_task_class('robowits/03-gap-retrieve-v0')(
             control_mode='EE_DELTA', observation_mode='JOINT', max_episode_steps=args.max_steps,

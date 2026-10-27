@@ -1,5 +1,5 @@
 {
-  "status": "paired_experiment_in_progress",
+  "status": "paused_for_user_review",
   "native_baseline": [
     {
       "episode": 105,
@@ -307,7 +307,7 @@
     "checkpoint_audit_limit": "size and mtime, not rereading 12GB weight content"
   },
   "tests": {
-    "passed": 30,
+    "passed": 31,
     "skipped": 1
   },
   "human_review": "pending",
@@ -414,5 +414,31 @@
     "reference_vlm_seconds": 0.0,
     "mode": "selection",
     "observation_sha256": "de25e19e05f56ea2ead931fadd35f2f95a9f73e6398a633fc971f324e368ecf5"
+  },
+  "interruption": {
+    "case": 0,
+    "condition": "forced_zero",
+    "completed_decisions": 8,
+    "executed_steps": 40,
+    "provider_error": "configured API usage limit reached",
+    "provider_access_resumes_utc": "2026-11-01 00:00 UTC",
+    "wm_comparison_complete": false
+  },
+  "bounded_review": {
+    "status": "paused_for_review",
+    "reviewed_steps": 50,
+    "baseline_action_equal": [
+      true,
+      true
+    ],
+    "baseline_joint_max_abs_diff": [
+      0.0,
+      0.0
+    ],
+    "decisions": 10,
+    "changed_choices": 0,
+    "task_success_rate_available": false,
+    "automatic_continuation": false,
+    "directory": "/data/mjw/world-action-planner/eef-study/20261027/review-50"
   }
 }

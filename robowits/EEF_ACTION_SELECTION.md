@@ -179,3 +179,22 @@ Additional entry points: `eef_baseline` (native labeled evaluator + action repla
 `eef_contact_audit` (trajectory-checked post-hoc physical contacts),
 `candidate_audit` (eight seeded draws at fixed states), and `reward_audit`
 (order/identical/static controls). None invokes policy training.
+
+## Pause for review and recover an interrupted control
+
+`--stop-after-steps 50` keeps the native 1,000-step task budget but stops the
+experiment after 50 executed steps. Unless the native environment has already
+terminated, the result is `paused_for_review`, with `success=null`; it must not
+be counted as a completed task failure.
+
+`--recover-from /path/to/interrupted-forced-zero` requires a fresh output
+directory and an interrupted forced-zero source. It reconstructs the trajectory
+from reset and checks the paired baseline at every step. Saved policy draws,
+predictions and judgments are reused only with matching inputs. Existing evidence
+is preserved. Model, action-adapter and reward-prompt hashes must match; the old
+and new orchestration hashes are explicitly recorded in `recovery.json`.
+
+A selection trial can reuse a paused control only up to that control's review
+limit. `python -m robowits.review_eef_batch --batch /path/to/review-batch
+--baseline /path/to/completed-baseline` generates Markdown, a three-condition
+execution video and candidate clips. It never starts another experiment.

@@ -63,8 +63,8 @@ def test_eef_target_composition_matches_native_and_holds_other_arm():
                                   native.to_env_ee_delta(native.eef_between(start, targets[0])))
 
 
-@pytest.mark.parametrize('all_invalid,mode', [(False,'selection'),(True,'selection'),(False,'baseline')])
-def test_real_loop_orchestration_executes_selected_prefix_and_reobserves(tmp_path, monkeypatch, all_invalid, mode):
+@pytest.mark.parametrize('all_invalid,mode,stop_after', [(False,'selection',None),(True,'selection',None),(False,'baseline',None),(False,'selection',2)])
+def test_real_loop_orchestration_executes_selected_prefix_and_reobserves(tmp_path, monkeypatch, all_invalid, mode, stop_after):
     pytest.importorskip('hier_policy.rollout')
     import robowits.eef_loop as module
     import imageio.v2
@@ -115,7 +115,8 @@ def test_real_loop_orchestration_executes_selected_prefix_and_reobserves(tmp_pat
         def append_data(self, frame): pass
     monkeypatch.setattr(imageio.v2, 'get_writer', lambda *a, **kw: Writer())
     args = SimpleNamespace(out=tmp_path, case=0, seed=2, num_candidates=2, execute_steps=2,
-                           subgoal_steps=50, max_steps=3, vlm_socket='unused', force_candidate_zero=False, mode=mode)
+                           subgoal_steps=50, max_steps=3, vlm_socket='unused', force_candidate_zero=False, mode=mode,
+                           stop_after_steps=stop_after)
     fk = SimpleNamespace(skeleton=lambda state: 0)
     if all_invalid:
         with pytest.raises(RuntimeError, match='rejected every'):
@@ -124,10 +125,14 @@ def test_real_loop_orchestration_executes_selected_prefix_and_reobserves(tmp_pat
         assert json.loads((tmp_path/'result.json').read_text())['success'] is None
     else:
         result = module.run_episode(Env(), Policy(), WM(), Judge(), Proxy(), fk, args)
-        assert executed == ([0., 0., 0.] if mode == 'baseline' else [1., 1., 1.])
-        assert seen == [0, 2]  # Second sampling uses the updated real observation.
-        assert imagined == ([] if mode == 'baseline' else [0., 1., 0., 1.])
-        assert result['decisions'] == 2 and result['steps'] == 3
+        count = stop_after or 3
+        assert executed == ([0.] if mode == 'baseline' else [1.])*count
+        assert seen == ([0] if stop_after else [0, 2])
+        assert imagined == ([] if mode == 'baseline' else [0., 1.]*(1 if stop_after else 2))
+        assert result['steps'] == count
+        assert result['status'] == ('paused_for_review' if stop_after else 'complete')
+        if stop_after:
+            assert result['success'] is None and result['success_at_stop'] is False
 
 
 def test_independent_judge_hides_original_candidate_index(tmp_path, monkeypatch):
@@ -153,6 +158,10 @@ def test_selection_margin_retains_zero_for_observed_judge_noise():
     rows = [{'valid':True,'score':.0}, {'valid':True,'score':.05}]
     assert choose(rows, margin=.1, require_baseline=False) == 0
     rows[1]['score'] = .2
+    assert choose(rows, margin=.1, require_baseline=False) == 1
+    rows[0]['score'], rows[1]['score'] = .35, .45
+    assert choose(rows, margin=.1, require_baseline=False) == 0
+    rows[1]['score'] = .450001
     assert choose(rows, margin=.1, require_baseline=False) == 1
 
 

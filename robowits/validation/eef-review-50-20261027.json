@@ -1,0 +1,416 @@
+{
+  "summary": {
+    "status": "paused_for_review",
+    "reviewed_steps": 50,
+    "baseline_action_equal": [
+      true,
+      true
+    ],
+    "baseline_joint_max_abs_diff": [
+      0.0,
+      0.0
+    ],
+    "decisions": 10,
+    "changed_choices": 0,
+    "task_success_rate_available": false,
+    "automatic_continuation": false,
+    "directory": "/data/mjw/world-action-planner/eef-study/20261027/review-50"
+  },
+  "selection_rule": {
+    "command": [
+      "/home/junwenmiao/code/RoboWits-genesis131/.venv/bin/python",
+      "-u",
+      "-m",
+      "robowits.eef_loop",
+      "--sim-root",
+      "/home/junwenmiao/code/RoboWits-wap-eef",
+      "--policy-python",
+      "/data/mjw/world-action-planner/openpi-venv/bin/python",
+      "--openpi-runtime",
+      "/data/mjw/world-action-planner/openpi-runtime",
+      "--policy-checkpoint",
+      "/data/robowits-checkpoints/pi05_robowits_subgoal_eef/lemon_eef_b64/29999",
+      "--wm-python",
+      "/data/mjw/world-action-planner/wm-venv/bin/python",
+      "--wm-checkpoint",
+      "/data/mjw/world-action-planner/robowits-lemon/20261021/experiment/train/checkpoints/latest-step=2000.ckpt",
+      "--ckpts",
+      "/data/mjw/world-action-planner/ckpts/world_models",
+      "--wan",
+      "/data/mjw/world-action-planner/ckpts/Wan2.1-T2V-1.3B",
+      "--urdf",
+      "/home/junwenmiao/code/RoboWits/assets/hf_assets/marvin_bimanual/urdf/marvin_pika.urdf",
+      "--policy-gpu",
+      "1",
+      "--wm-gpu",
+      "0",
+      "--num-candidates",
+      "2",
+      "--execute-steps",
+      "5",
+      "--subgoal-steps",
+      "50",
+      "--eval-json",
+      "/data/mjw/world-action-planner/eef-study/20261027/novel-scenes.json",
+      "--vlm-socket",
+      "/tmp/wap-study-claude-20261027.sock",
+      "--max-steps",
+      "1000",
+      "--reward-mode",
+      "independent",
+      "--selection-margin",
+      "0.1",
+      "--case",
+      "0",
+      "--seed",
+      "202610270",
+      "--out",
+      "/data/mjw/world-action-planner/eef-study/20261027/review-50/selection",
+      "--mode",
+      "selection",
+      "--stop-after-steps",
+      "50",
+      "--reference-run",
+      "/data/mjw/world-action-planner/eef-study/20261027/paired/case-0/baseline",
+      "--reuse-baseline-candidate-zero",
+      "--reuse-imagination-from",
+      "/data/mjw/world-action-planner/eef-study/20261027/review-50/forced_zero"
+    ],
+    "selection_rule_sha256": "f16f40e4e70c8f6b930d59ce300be210baaa2a6f67cac099ecd4801f4dadd872",
+    "rule": "score improvement must exceed 0.10; equality within 1e-12 retains candidate zero",
+    "stop_after_steps": 50,
+    "no_automatic_continuation": true
+  },
+  "decisions": [
+    {
+      "step": 0,
+      "seeds": [
+        673922501,
+        3072428924
+      ],
+      "subgoal": "Move gripper above the lemon between the blocks",
+      "scores": [
+        {
+          "id": 0,
+          "valid": true,
+          "score": 0.35,
+          "reason": "The right arm extends forward toward the table area between the two black blocks, with the right wrist view showing the arm/gripper entering the frame by +0.30s. The green target stays stationary and the lemon is not clearly visible in the ego view (only a small dark object near the block). No grasp or contact occurs, but the reach motion is coherent and heads toward the gap between the blocks, modest progress toward hovering above the lemon."
+        },
+        {
+          "id": 1,
+          "valid": true,
+          "score": 0.35,
+          "reason": "Across the frames the right gripper moves slightly rightward/forward toward the dark block region near the lemon, and the left wrist view shows the green target area entering view at the bottom and the table edge shifting, indicating coherent arm motion. However the lemon (yellow/green object) is barely visible and the gripper does not clearly end up above it between the blocks; no grasp or contact is observed. Scene remains consistent with no duplication or teleportation, so modest progress only."
+        }
+      ],
+      "recommended": 0,
+      "selected": 0,
+      "policy_seconds": 11.766314925975166,
+      "wm_seconds": 0.0,
+      "proxy_seconds": 6.455668153939769,
+      "vlm_seconds": 0.0,
+      "reused_wm_predictions": 2,
+      "reference_wm_seconds": 0.0,
+      "reference_vlm_seconds": 0.0,
+      "mode": "selection",
+      "observation_sha256": "de25e19e05f56ea2ead931fadd35f2f95a9f73e6398a633fc971f324e368ecf5"
+    },
+    {
+      "step": 5,
+      "seeds": [
+        963061631,
+        2429422680
+      ],
+      "subgoal": "Move gripper above the lemon between the blocks",
+      "scores": [
+        {
+          "id": 0,
+          "valid": true,
+          "score": 0.1,
+          "reason": "Across the four frames the ego view shows the two gripper arms, the dark blocks, the wooden peg and the green target in essentially identical positions; no lemon is visible anywhere, the grippers do not move toward the gap between the blocks, and the wrist views only show slight table-edge shifts. No observable progress toward hovering above the lemon."
+        },
+        {
+          "id": 1,
+          "valid": true,
+          "score": 0.1,
+          "reason": "Across the four predicted frames the ego view is essentially static: both grippers remain at the same positions, the two black blocks and the green target do not move, and no lemon is visibly approached. The only change is in the wrist views, where the table edge shifts slightly and a dark shape appears in the lower-left of the right wrist view at +0.30s, suggesting minor gripper motion but no clear progress toward positioning above the lemon between the blocks. No grasp or object contact is visible."
+        }
+      ],
+      "recommended": 0,
+      "selected": 0,
+      "policy_seconds": 0.19276864710263908,
+      "wm_seconds": 0.0,
+      "proxy_seconds": 6.0962421810254455,
+      "vlm_seconds": 0.0,
+      "reused_wm_predictions": 2,
+      "reference_wm_seconds": 0.0,
+      "reference_vlm_seconds": 0.0,
+      "mode": "selection",
+      "observation_sha256": "dab91c455663fa4c9e17806b0c6a35179ccb36ab45b6c7f764b7c588e6c652db"
+    },
+    {
+      "step": 10,
+      "seeds": [
+        1861006112,
+        3598155612
+      ],
+      "subgoal": "Move gripper above the lemon between the blocks",
+      "scores": [
+        {
+          "id": 0,
+          "valid": true,
+          "score": 0.35,
+          "reason": "The ego view shows the right gripper moving from the lower right toward the dark block near the green target, with the arm shifting rightward and lifting slightly across frames; the lemon (not clearly visible, possibly occluded between the blocks) is not contacted. The right wrist view changes consistently with the arm moving (table edge shifting, a yellow object appearing at the left edge in the last frame). Motion is coherent but the gripper does not clearly reach a position above the lemon, and it is approaching the block, giving modest progress with some collision risk."
+        },
+        {
+          "id": 1,
+          "valid": true,
+          "score": 0.35,
+          "reason": "The scene stays coherent: lemon, two black blocks and green target remain in place with no duplication. The right gripper moves slowly rightward/forward toward the center block region near the lemon across frames, with the wrist camera showing the gripper lowering over the white table surface. Progress toward positioning above the lemon is modest and incomplete; no grasp occurs and there is some risk of contacting the adjacent block."
+        }
+      ],
+      "recommended": 0,
+      "selected": 0,
+      "policy_seconds": 0.19297122093848884,
+      "wm_seconds": 0.0,
+      "proxy_seconds": 6.012654685997404,
+      "vlm_seconds": 0.0,
+      "reused_wm_predictions": 2,
+      "reference_wm_seconds": 0.0,
+      "reference_vlm_seconds": 0.0,
+      "mode": "selection",
+      "observation_sha256": "7ae03d2f2625b8b7cdc517dad4283e43b1b354427ac1728a99a011b7ec324e1d"
+    },
+    {
+      "step": 15,
+      "seeds": [
+        212092504,
+        3779446953
+      ],
+      "subgoal": "Move gripper above the lemon between the blocks",
+      "scores": [
+        {
+          "id": 0,
+          "valid": true,
+          "score": 0.45,
+          "reason": "The right arm visibly moves downward/forward toward the table; the right wrist camera shows the lemon coming into view at the bottom edge and a gray block appearing to the right, indicating the gripper is approaching the lemon between the blocks. Motion is coherent and the lemon stays consistent, but the gripper is not yet clearly centered above the lemon and the nearby block poses some collision risk."
+        },
+        {
+          "id": 1,
+          "valid": true,
+          "score": 0.35,
+          "reason": "In the ego view the left gripper shifts slightly and the right gripper lowers a bit, with the shadows adjusting coherently; the lemon (visible in the right wrist view between gray blocks) becomes more clearly visible and the block edge enters the right wrist view, suggesting the right gripper is descending toward the lemon between the blocks. Motion is small and no grasp occurs; the lemon stays in place and the green target remains unchanged, so progress is modest but consistent with the subgoal."
+        }
+      ],
+      "recommended": 0,
+      "selected": 0,
+      "policy_seconds": 0.19670747208874673,
+      "wm_seconds": 0.0,
+      "proxy_seconds": 6.0619750620098785,
+      "vlm_seconds": 0.0,
+      "reused_wm_predictions": 2,
+      "reference_wm_seconds": 0.0,
+      "reference_vlm_seconds": 0.0,
+      "mode": "selection",
+      "observation_sha256": "0f0af9d5fad3b65f29163ee43528e0cc58665836db28f88dd24f75bf10397ebd"
+    },
+    {
+      "step": 20,
+      "seeds": [
+        496452489,
+        336809547
+      ],
+      "subgoal": "Move gripper above the lemon between the blocks",
+      "scores": [
+        {
+          "id": 0,
+          "valid": true,
+          "score": 0.55,
+          "reason": "Across the four frames the right arm visibly moves: in the ego view the right gripper shifts toward the lemon region between the two blocks, and the right wrist view shows the gray block and lemon coming into closer view as the gripper lowers/advances. The lemon stays consistently rendered in the right wrist view (yellow object between fingers region) and blocks remain coherent; no teleportation or duplication. No grasp occurs and the lemon is not yet directly under the gripper, but the motion is coherent progress toward hovering above the lemon with modest collision risk near the gray block."
+        },
+        {
+          "id": 1,
+          "valid": true,
+          "score": 0.35,
+          "reason": "Ego view shows the right gripper shifting slightly rightward/inward over the frames while the left arm stays near the green target; the right wrist camera shows a yellow lemon entering view at the bottom and a block edge moving across, suggesting the right gripper is approaching the lemon between the blocks. Motion is small and coherent, no grasp occurs, and the lemon remains on the table; views stay consistent with no object duplication or teleportation."
+        }
+      ],
+      "recommended": 0,
+      "selected": 0,
+      "policy_seconds": 0.1717543889535591,
+      "wm_seconds": 0.0,
+      "proxy_seconds": 6.053007190930657,
+      "vlm_seconds": 0.0,
+      "reused_wm_predictions": 2,
+      "reference_wm_seconds": 0.0,
+      "reference_vlm_seconds": 0.0,
+      "mode": "selection",
+      "observation_sha256": "3ddf788112c56384cc4f0f0cf0ca62aa2bffe38c4d36f50b7e4a512f348c4ea0"
+    },
+    {
+      "step": 25,
+      "seeds": [
+        253981427,
+        1383368638
+      ],
+      "subgoal": "Move gripper above the lemon between the blocks",
+      "scores": [
+        {
+          "id": 0,
+          "valid": true,
+          "score": 0.3,
+          "reason": "The right arm visibly moves inward and lowers toward the table region near the green target/blocks across the frames; the right wrist view shows a gripper descending closer to the white surface. The lemon itself is not clearly visible in any frame, so no grasp occurs and it is unclear whether the gripper is positioned above the lemon. Motion is coherent with no object teleportation, but progress toward the subgoal is only partial and uncertain."
+        },
+        {
+          "id": 1,
+          "valid": true,
+          "score": 0.35,
+          "reason": "Ego view shows both arms mostly static over the white table with the green target and dark gripper fingers near the top; the gray block between the grippers stays in place and no lemon is clearly visible being approached. In the final frames the right wrist view changes abruptly to show a grey blob/gripper close-up, suggesting the right arm lowered toward the table, but the ego view shows little corresponding descent. Minor plausible motion toward the lemon area, no grasp, some view inconsistency."
+        }
+      ],
+      "recommended": 0,
+      "selected": 0,
+      "policy_seconds": 0.17128791799768806,
+      "wm_seconds": 0.0,
+      "proxy_seconds": 6.012925025890581,
+      "vlm_seconds": 0.0,
+      "reused_wm_predictions": 2,
+      "reference_wm_seconds": 0.0,
+      "reference_vlm_seconds": 0.0,
+      "mode": "selection",
+      "observation_sha256": "b933aba38e6d19a2c65cbaa375e5218d37495d1eca3cbf70f4abae51887945f4"
+    },
+    {
+      "step": 30,
+      "seeds": [
+        2898511678,
+        1269332983
+      ],
+      "subgoal": "Move gripper above the lemon between the blocks",
+      "scores": [
+        {
+          "id": 0,
+          "valid": true,
+          "score": 0.3,
+          "reason": "In the ego view the left arm's gripper shifts slightly rightward/downward toward the gap between the two black blocks and the green patch, and the right wrist view shows the gripper fingers moving in and some block edge becoming visible; however the lemon itself is barely discernible, the motion is small and mostly a minor repositioning, and the right-arm gripper drifts without clear purpose. No grasp or contact with the lemon is visible. Views stay coherent, no teleportation or object duplication."
+        },
+        {
+          "id": 1,
+          "valid": true,
+          "score": 0.3,
+          "reason": "Across the four frames the two black blocks and the lemon on the table remain in roughly the same place while the grippers shift slightly; the right gripper moves marginally toward the lemon but no clear positioning directly above the lemon between the blocks is achieved. No grasp or object motion occurs, scene stays coherent with no duplication or teleportation, but progress toward the subgoal is minimal."
+        }
+      ],
+      "recommended": 0,
+      "selected": 0,
+      "policy_seconds": 0.17248740408103913,
+      "wm_seconds": 0.0,
+      "proxy_seconds": 6.8352860228624195,
+      "vlm_seconds": 0.0,
+      "reused_wm_predictions": 2,
+      "reference_wm_seconds": 0.0,
+      "reference_vlm_seconds": 0.0,
+      "mode": "selection",
+      "observation_sha256": "3981bea8129f968c03f4978d20f3e1a2c37dd1bd892c374aada246399db7b7ee"
+    },
+    {
+      "step": 35,
+      "seeds": [
+        2776126788,
+        1043438799
+      ],
+      "subgoal": "Move gripper above the lemon between the blocks",
+      "scores": [
+        {
+          "id": 0,
+          "valid": true,
+          "score": 0.3,
+          "reason": "The ego view shows the right arm shifting slightly rightward over +0.30s while the green target and black blocks remain static; no lemon is clearly visible or approached. The right wrist view becomes incoherent in the final frame with a smeared gray blob replacing the table edge, indicating an unreliable prediction. Some arm motion toward the block region but no visible progress above a lemon."
+        },
+        {
+          "id": 1,
+          "valid": true,
+          "score": 0.35,
+          "reason": "Ego view shows the right gripper (right side of frame) moving slightly toward the center between the two black blocks over frames +0.05s to +0.30s, with the left wrist camera view changing as the arm shifts. No lemon is clearly visible in any view; the green object appears to be the target area under the left gripper. Motion is coherent but small, and the +0.30s left-wrist frame becomes blurry/ambiguous, so progress toward positioning above a lemon is minimal and uncertain. No grasp occurs."
+        }
+      ],
+      "recommended": 0,
+      "selected": 0,
+      "policy_seconds": 0.1932123570004478,
+      "wm_seconds": 0.0,
+      "proxy_seconds": 7.72680504003074,
+      "vlm_seconds": 0.0,
+      "reused_wm_predictions": 2,
+      "reference_wm_seconds": 0.0,
+      "reference_vlm_seconds": 0.0,
+      "mode": "selection",
+      "observation_sha256": "e42dc6adf9ce128791f73f3fd4d3d21246e3b98e6a96a1a7827ccb15469cdbff"
+    },
+    {
+      "step": 40,
+      "seeds": [
+        671625672,
+        2069968568
+      ],
+      "subgoal": "Move gripper above the lemon between the blocks",
+      "scores": [
+        {
+          "id": 0,
+          "valid": true,
+          "score": 0.35,
+          "reason": "The right arm visibly moves over the frames: the gripper swings rightward/upward toward the cluster of black blocks and the lemon between them, with the wrist camera view shifting accordingly. The left arm and blocks stay stationary, so motion is coherent, but the gripper does not clearly end up positioned directly above the lemon and no contact occurs; progress toward the subgoal is partial and uncertain."
+        },
+        {
+          "id": 1,
+          "valid": true,
+          "score": 0.45,
+          "reason": "The right arm visibly moves inward and lowers toward the gap between the two black blocks where the lemon sits, with the gripper approaching above the lemon area across frames; the green target and blocks stay in consistent positions. However the lemon itself is barely visible between blocks and the wrist views show mostly gripper fingers and table edge without a clear view of the lemon, so alignment over the lemon is unconfirmed. Motion is coherent with no object duplication or teleportation, but close approach to the blocks carries some collision risk."
+        }
+      ],
+      "recommended": 0,
+      "selected": 0,
+      "policy_seconds": 0.17257784598041326,
+      "wm_seconds": 0.0,
+      "proxy_seconds": 7.916723694070242,
+      "vlm_seconds": 0.0,
+      "reused_wm_predictions": 2,
+      "reference_wm_seconds": 0.0,
+      "reference_vlm_seconds": 6.642961560981348,
+      "mode": "selection",
+      "observation_sha256": "b6468defb70e0c944cd060a9a29a7805f056122363ef83399ce33264a9228aeb"
+    },
+    {
+      "step": 45,
+      "seeds": [
+        2985831744,
+        2739124671
+      ],
+      "subgoal": "Move gripper above the lemon between the blocks",
+      "scores": [
+        {
+          "id": 0,
+          "valid": true,
+          "score": 0.35,
+          "reason": "Ego view shows the right arm moving from the right side toward the center over the white table toward the black blocks region, with the left arm staying mostly still near the green target. The right wrist view shows the gripper lowering toward the table surface with dark block shapes coming into view, consistent with approaching the lemon between the blocks. However, the lemon itself is not clearly visible in any frame, the right wrist view becomes blurry/distorted in later frames, and no object contact is shown, so progress is only partial approach without confirmed positioning above the lemon."
+        },
+        {
+          "id": 1,
+          "valid": true,
+          "score": 0.35,
+          "reason": "The right arm moves inward toward the lemon/blocks cluster on the table across the frames while the left arm stays near the green marker; the lemon remains between the blocks with no grasp visible. Wrist views show the right wrist approaching the table edge but the later right-wrist frames become smeared and blurry, lowering confidence. Modest, plausible approach progress toward hovering above the lemon, no collision evident."
+        }
+      ],
+      "recommended": 0,
+      "selected": 0,
+      "policy_seconds": 0.19429036497604102,
+      "wm_seconds": 0.0,
+      "proxy_seconds": 8.306544788996689,
+      "vlm_seconds": 0.0,
+      "reused_wm_predictions": 2,
+      "reference_wm_seconds": 88.82203730603214,
+      "reference_vlm_seconds": 8.03219940699637,
+      "mode": "selection",
+      "observation_sha256": "0ba9787633f0194374cd8ba9fa36060a0f4870cb33a96bf3ebccd5484f24b4cc"
+    }
+  ]
+}
