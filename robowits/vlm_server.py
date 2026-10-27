@@ -18,9 +18,9 @@ def main():
         raise FileExistsError(args.socket)
     import torch
     from PIL import Image
-    from transformers import AutoProcessor, Qwen3_5ForConditionalGeneration
+    from transformers import AutoProcessor, AutoModelForImageTextToText
     processor = AutoProcessor.from_pretrained(args.model, local_files_only=True)
-    model = Qwen3_5ForConditionalGeneration.from_pretrained(args.model, local_files_only=True,
+    model = AutoModelForImageTextToText.from_pretrained(args.model, local_files_only=True,
             dtype=torch.bfloat16, device_map='cuda:0', attn_implementation='sdpa').eval()
     class Handler(socketserver.StreamRequestHandler):
         def handle(self):

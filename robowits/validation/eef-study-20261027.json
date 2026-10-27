@@ -1,0 +1,418 @@
+{
+  "status": "paired_experiment_in_progress",
+  "native_baseline": [
+    {
+      "episode": 105,
+      "conditioning": "ground-truth labeled subgoals, not autonomous planning",
+      "success": false,
+      "steps": 783,
+      "error": null,
+      "wall_seconds": 73.03315262892283,
+      "queries": 158,
+      "adapter_action_max_abs_diff": 0.0,
+      "adapter_joint_max_abs_diff": 0.0,
+      "adapter_success": false
+    },
+    {
+      "episode": 120,
+      "conditioning": "ground-truth labeled subgoals, not autonomous planning",
+      "success": false,
+      "steps": 1115,
+      "error": null,
+      "wall_seconds": 85.10306846594904,
+      "queries": 223,
+      "adapter_action_max_abs_diff": 0.0,
+      "adapter_joint_max_abs_diff": 0.0,
+      "adapter_success": false
+    },
+    {
+      "episode": 130,
+      "conditioning": "ground-truth labeled subgoals, not autonomous planning",
+      "success": false,
+      "steps": 536,
+      "error": null,
+      "wall_seconds": 51.748285371111706,
+      "queries": 109,
+      "adapter_action_max_abs_diff": 0.0,
+      "adapter_joint_max_abs_diff": 0.0,
+      "adapter_success": false
+    },
+    {
+      "episode": 140,
+      "conditioning": "ground-truth labeled subgoals, not autonomous planning",
+      "success": false,
+      "steps": 428,
+      "error": null,
+      "wall_seconds": 30.735575183993205,
+      "queries": 87,
+      "adapter_action_max_abs_diff": 0.0,
+      "adapter_joint_max_abs_diff": 0.0,
+      "adapter_success": false
+    },
+    {
+      "episode": 149,
+      "conditioning": "ground-truth labeled subgoals, not autonomous planning",
+      "success": false,
+      "steps": 496,
+      "error": null,
+      "wall_seconds": 42.10775587998796,
+      "queries": 101,
+      "adapter_action_max_abs_diff": 0.0,
+      "adapter_joint_max_abs_diff": 0.0,
+      "adapter_success": false
+    }
+  ],
+  "native_contacts": [
+    {
+      "episode": 105,
+      "success": false,
+      "steps": 783,
+      "max_joint_error": 0.0,
+      "finger_lemon_contact_frames": 53,
+      "robot_wall_contact_frames": 261,
+      "maximum_lift_m": 0.00465625524520874,
+      "minimum_lemon_z_m": 0.7789566516876221,
+      "failure_stage": "finger_contact_without_lift",
+      "contact_force_threshold_N": 0.01,
+      "lift_threshold_m": 0.025
+    },
+    {
+      "episode": 120,
+      "success": false,
+      "steps": 1115,
+      "max_joint_error": 0.0,
+      "finger_lemon_contact_frames": 562,
+      "robot_wall_contact_frames": 43,
+      "maximum_lift_m": 0.03309023380279541,
+      "minimum_lemon_z_m": 0.7792600393295288,
+      "failure_stage": "lift_without_successful_placement_review_video",
+      "contact_force_threshold_N": 0.01,
+      "lift_threshold_m": 0.025
+    },
+    {
+      "episode": 130,
+      "success": false,
+      "steps": 536,
+      "max_joint_error": 0.0,
+      "finger_lemon_contact_frames": 0,
+      "robot_wall_contact_frames": 222,
+      "maximum_lift_m": -1.901388168334961e-05,
+      "minimum_lemon_z_m": 0.7793853282928467,
+      "failure_stage": "no_finger_contact_or_lift",
+      "contact_force_threshold_N": 0.01,
+      "lift_threshold_m": 0.025
+    },
+    {
+      "episode": 140,
+      "success": false,
+      "steps": 428,
+      "max_joint_error": 0.0,
+      "finger_lemon_contact_frames": 0,
+      "robot_wall_contact_frames": 0,
+      "maximum_lift_m": 7.3909759521484375e-06,
+      "minimum_lemon_z_m": 0.779371976852417,
+      "failure_stage": "no_finger_contact_or_lift",
+      "contact_force_threshold_N": 0.01,
+      "lift_threshold_m": 0.025
+    },
+    {
+      "episode": 149,
+      "success": false,
+      "steps": 496,
+      "max_joint_error": 0.0,
+      "finger_lemon_contact_frames": 0,
+      "robot_wall_contact_frames": 435,
+      "maximum_lift_m": 0.0005915164947509766,
+      "minimum_lemon_z_m": 0.7774863839149475,
+      "failure_stage": "no_finger_contact_or_lift",
+      "contact_force_threshold_N": 0.01,
+      "lift_threshold_m": 0.025
+    }
+  ],
+  "candidate_diversity": [
+    {
+      "episode": 105,
+      "query": 0,
+      "step": 0,
+      "prompt": "Push the right boundary block aside",
+      "candidate_count": 8,
+      "pairwise_mean_endpoint_distance_m": 0.0020286981016397476,
+      "pairwise_max_endpoint_distance_m": 0.004166618455201387,
+      "candidate_zero_repeat_max_abs_diff": 0.0,
+      "mean_native_delta_norm_m": 0.0007791227544657886
+    },
+    {
+      "episode": 105,
+      "query": 79,
+      "step": 395,
+      "prompt": "Pick up the lemon",
+      "candidate_count": 8,
+      "pairwise_mean_endpoint_distance_m": 0.0030700562056154013,
+      "pairwise_max_endpoint_distance_m": 0.005748405121266842,
+      "candidate_zero_repeat_max_abs_diff": 0.0,
+      "mean_native_delta_norm_m": 0.0015466716140508652
+    },
+    {
+      "episode": 105,
+      "query": 157,
+      "step": 781,
+      "prompt": "Withdraw both hands",
+      "candidate_count": 8,
+      "pairwise_mean_endpoint_distance_m": 0.007855040021240711,
+      "pairwise_max_endpoint_distance_m": 0.011550631374120712,
+      "candidate_zero_repeat_max_abs_diff": 0.0,
+      "mean_native_delta_norm_m": 0.0014924636343494058
+    }
+  ],
+  "split_audit": {
+    "wm_train": [
+      105,
+      106,
+      107,
+      108,
+      109,
+      110,
+      111,
+      112,
+      113,
+      114,
+      115,
+      116,
+      117,
+      118,
+      119,
+      120,
+      121,
+      122,
+      123,
+      124,
+      125,
+      126,
+      127,
+      128,
+      129,
+      130,
+      131,
+      132,
+      133,
+      134,
+      135,
+      136,
+      137,
+      138,
+      139,
+      140,
+      141,
+      142,
+      143,
+      144,
+      145,
+      146,
+      147,
+      148,
+      149
+    ],
+    "wm_test": [
+      100,
+      101,
+      102
+    ],
+    "policy_validation": [
+      105,
+      120,
+      130,
+      140,
+      149
+    ],
+    "policy_train_from_config": [
+      100,
+      101,
+      102,
+      103,
+      104,
+      106,
+      107,
+      108,
+      109,
+      110,
+      111,
+      112,
+      113,
+      114,
+      115,
+      116,
+      117,
+      118,
+      119,
+      121,
+      122,
+      123,
+      124,
+      125,
+      126,
+      127,
+      128,
+      129,
+      131,
+      132,
+      133,
+      134,
+      135,
+      136,
+      137,
+      138,
+      139,
+      141,
+      142,
+      143,
+      144,
+      145,
+      146,
+      147,
+      148
+    ],
+    "jointly_held_out_among_50": [],
+    "warning": "Policy validation trajectories are WM training trajectories; no joint holdout among these 50 episodes."
+  },
+  "layout_audit": {
+    "comparison": "mean 3D displacement of the four named object origins against all 50 recording initial states; no outcomes used",
+    "caveat": "New translations of existing seed layouts, not new task geometry; comparison uses recorded origins before importer/reset adjustment",
+    "results": [
+      {
+        "case": 0,
+        "nearest_recorded_episode": 117,
+        "mean_object_position_distance_m": 0.06962625271847113,
+        "exact_position_duplicate": false
+      },
+      {
+        "case": 1,
+        "nearest_recorded_episode": 102,
+        "mean_object_position_distance_m": 0.07400720962314646,
+        "exact_position_duplicate": false
+      },
+      {
+        "case": 2,
+        "nearest_recorded_episode": 139,
+        "mean_object_position_distance_m": 0.06543824556896718,
+        "exact_position_duplicate": false
+      }
+    ]
+  },
+  "read_only_audit": {
+    "checkpoint_file_count": 21,
+    "checkpoint_size_and_mtime_unchanged": true,
+    "amber_worktree_clean": true,
+    "amber_overlay_files": 60,
+    "amber_overlay_unchanged": true,
+    "checkpoint_audit_limit": "size and mtime, not rereading 12GB weight content"
+  },
+  "tests": {
+    "passed": 30,
+    "skipped": 1
+  },
+  "human_review": "pending",
+  "evidence_root": "/data/mjw/world-action-planner/eef-study/20261027",
+  "new_layout_baselines": [
+    {
+      "case": 0,
+      "status": "complete",
+      "success": false,
+      "steps": 1000,
+      "wall_seconds": 197.23495176492725,
+      "decisions": 200,
+      "changed_choices": 0
+    },
+    {
+      "case": 1,
+      "status": "complete",
+      "success": false,
+      "steps": 1000,
+      "wall_seconds": 183.74015455401968,
+      "decisions": 200,
+      "changed_choices": 0
+    },
+    {
+      "case": 2,
+      "status": "complete",
+      "success": false,
+      "steps": 1000,
+      "wall_seconds": 262.9779027450131,
+      "decisions": 200,
+      "changed_choices": 0
+    }
+  ],
+  "new_layout_baseline_contacts": [
+    {
+      "case": 0,
+      "success": false,
+      "steps": 1000,
+      "max_joint_error": 0.0,
+      "finger_lemon_contact_frames": 0,
+      "robot_wall_contact_frames": 771,
+      "maximum_lift_m": 0.012908756732940674,
+      "minimum_lemon_z_m": 0.7711695432662964,
+      "failure_stage": "no_finger_contact_or_lift",
+      "contact_force_threshold_N": 0.01,
+      "lift_threshold_m": 0.025
+    },
+    {
+      "case": 1,
+      "success": false,
+      "steps": 1000,
+      "max_joint_error": 0.0,
+      "finger_lemon_contact_frames": 0,
+      "robot_wall_contact_frames": 80,
+      "maximum_lift_m": 4.166364669799805e-05,
+      "minimum_lemon_z_m": 0.7800087928771973,
+      "failure_stage": "no_finger_contact_or_lift",
+      "contact_force_threshold_N": 0.01,
+      "lift_threshold_m": 0.025
+    },
+    {
+      "case": 2,
+      "success": false,
+      "steps": 1000,
+      "max_joint_error": 0.0,
+      "finger_lemon_contact_frames": 0,
+      "robot_wall_contact_frames": 169,
+      "maximum_lift_m": 0.009037196636199951,
+      "minimum_lemon_z_m": 0.7783988118171692,
+      "failure_stage": "no_finger_contact_or_lift",
+      "contact_force_threshold_N": 0.01,
+      "lift_threshold_m": 0.025
+    }
+  ],
+  "first_forced_zero_decision": {
+    "step": 0,
+    "seeds": [
+      673922501,
+      3072428924
+    ],
+    "subgoal": "Move gripper above the lemon between the blocks",
+    "scores": [
+      {
+        "id": 0,
+        "valid": true,
+        "score": 0.35,
+        "reason": "The right arm extends forward toward the table area between the two black blocks, with the right wrist view showing the arm/gripper entering the frame by +0.30s. The green target stays stationary and the lemon is not clearly visible in the ego view (only a small dark object near the block). No grasp or contact occurs, but the reach motion is coherent and heads toward the gap between the blocks, modest progress toward hovering above the lemon."
+      },
+      {
+        "id": 1,
+        "valid": true,
+        "score": 0.35,
+        "reason": "Across the frames the right gripper moves slightly rightward/forward toward the dark block region near the lemon, and the left wrist view shows the green target area entering view at the bottom and the table edge shifting, indicating coherent arm motion. However the lemon (yellow/green object) is barely visible and the gripper does not clearly end up above it between the blocks; no grasp or contact is observed. Scene remains consistent with no duplication or teleportation, so modest progress only."
+      }
+    ],
+    "recommended": 0,
+    "selected": 0,
+    "policy_seconds": 12.913922899053432,
+    "wm_seconds": 96.46903128095437,
+    "proxy_seconds": 6.604970132000744,
+    "vlm_seconds": 11.77564013400115,
+    "reused_wm_predictions": 0,
+    "reference_wm_seconds": 0.0,
+    "reference_vlm_seconds": 0.0,
+    "mode": "selection",
+    "observation_sha256": "de25e19e05f56ea2ead931fadd35f2f95a9f73e6398a633fc971f324e368ecf5"
+  }
+}

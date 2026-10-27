@@ -146,3 +146,36 @@ responses before running expensive evaluations or making performance claims.
 
 [Machine-readable verification](validation/eef-loop-20261027.json).
 Local complete evidence: `/data/mjw/world-action-planner/eef-loop/20261027/smoke-v1/`.
+
+## Audit and paired trials (2026-10-27)
+
+The initial Qwen reward failed static/order controls. See the new
+[Chinese progress report](reports/progress-2026-10-27.md) and
+[English progress report](reports/progress-2026-10-27.en.md) before interpreting
+scores or running expensive studies. The current pilot explicitly uses the
+existing Claude service, independent judgments and a 0.10 selection margin;
+these are experiment settings, not a claim of a fully calibrated reward.
+
+`eef_loop` now supports `--mode baseline`, `--reward-mode independent`,
+`--selection-margin`, and `--reference-run`. A baseline skips all WM/judge calls
+but uses the same single-subgoal planner. Matched trials check initial state,
+pre-divergence observations and executed trajectories. Because independent JAX
+processes were not bitwise identical, `--reuse-baseline-candidate-zero` pairs on
+the saved baseline draw only after all inputs, prompt and seed match exactly;
+fresh samples remain saved for audit. `--reuse-imagination-from` also reuses a
+completed control's candidate set at identical states, and reuses WM outputs
+only when every conditioning tensor and model/seed provenance match. Matching
+judgments can then be reused. Report cached compute separately from wall time.
+
+`python -m robowits.eef_study --spec study-spec.json --out study --conditions baseline`
+runs the fixed baselines. Once they complete, the same specification with
+`--conditions forced_zero selection` runs each paired control and selection.
+The specification contains simulator Python, environment, common loop arguments,
+and case/seed pairs. Completed trials are skipped; incomplete trials are never
+overwritten. Each trial retains its own status, video, logs and protocol.
+Errors are not task failures. The runner emits Markdown and JSON summaries.
+
+Additional entry points: `eef_baseline` (native labeled evaluator + action replay),
+`eef_contact_audit` (trajectory-checked post-hoc physical contacts),
+`candidate_audit` (eight seeded draws at fixed states), and `reward_audit`
+(order/identical/static controls). None invokes policy training.

@@ -56,7 +56,7 @@ def parse_rewards(raw, count):
             raise ValueError('Invalid reward types')
         if not math.isfinite(row['score']) or not 0 <= row['score'] <= 1:
             raise ValueError('Score must be finite and within [0,1]')
-        if not isinstance(row['reason'], str) or not row['reason'].strip():
+        if not isinstance(row['reason'], str) or not row['reason'].strip() or row['reason'].strip().lower() == 'brief visual evidence':
             raise ValueError('Require a judgment reason')
         scores[i] = row
     return scores
@@ -96,7 +96,26 @@ These are short, uncertain WM predictions, not ground truth. Do not infer unseen
 Object disappearance, duplication, teleportation or inconsistent views are reasons to distrust a candidate.
 Mark uninterpretable/unreliable predictions valid=false. Score trustworthy outcomes from 0 (worst) to 1 (best).
 Judge all {len(predictions)} candidates, with integer IDs 0 through {len(predictions)-1}.
-Return only JSON: {{"candidates":[{{"id":0,"valid":true,"score":0.5,"reason":"brief visual evidence"}}]}}.
-Include exactly one entry per candidate. No markdown.'''
+For an unchanged scene with no observable progress, score 0. Do not invent a grasp merely because the subgoal asks for one.
+A grasp requires visible object contact/retention and subsequent object motion with the gripper. If that is not visible, say so.
+Return a JSON object with one key, candidates, containing exactly one object per candidate.
+Each object must have exactly these fields: id (integer), valid (boolean), score (number from 0 to 1),
+reason (a specific description of what visibly changes or stays unchanged).
+Do not echo instructions or use generic placeholder reasons. No markdown.'''
         raw = generate(self.socket_path, prompt, images, out/'vlm')
         return parse_rewards(raw, len(predictions))
+
+
+class IndependentVLMReward(VLMReward):
+    """Score each candidate in its own request; original IDs never enter the prompt.
+
+    This removes cross-candidate display order as an input, but does not establish
+    visual correctness or calibrate scores. All raw individual responses are kept.
+    """
+    def judge(self, current, predictions, task, subgoal, out, *, valid_future_frames=6):
+        scores=[]
+        for i,pred in enumerate(predictions):
+            score=super().judge(current,[pred],task,subgoal,Path(out)/f'candidate-{i}',
+                                valid_future_frames=valid_future_frames)[0]
+            scores.append(dict(score,id=i))
+        return scores

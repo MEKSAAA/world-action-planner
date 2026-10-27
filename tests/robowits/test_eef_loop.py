@@ -63,8 +63,8 @@ def test_eef_target_composition_matches_native_and_holds_other_arm():
                                   native.to_env_ee_delta(native.eef_between(start, targets[0])))
 
 
-@pytest.mark.parametrize('all_invalid', [False, True])
-def test_real_loop_orchestration_executes_selected_prefix_and_reobserves(tmp_path, monkeypatch, all_invalid):
+@pytest.mark.parametrize('all_invalid,mode', [(False,'selection'),(True,'selection'),(False,'baseline')])
+def test_real_loop_orchestration_executes_selected_prefix_and_reobserves(tmp_path, monkeypatch, all_invalid, mode):
     pytest.importorskip('hier_policy.rollout')
     import robowits.eef_loop as module
     import imageio.v2
@@ -84,6 +84,7 @@ def test_real_loop_orchestration_executes_selected_prefix_and_reobserves(tmp_pat
             return self.obs(), 0., False, self._step_count >= 3, {'is_success': False}
     class Policy:
         def sample(self, inp, seeds, out):
+            assert len(seeds) == (1 if mode == 'baseline' else 2)
             seen.append(inp['observation/images/ego'])
             return np.stack([np.zeros((10,14)), np.ones((10,14))]), .1
     class Proxy:
@@ -114,7 +115,7 @@ def test_real_loop_orchestration_executes_selected_prefix_and_reobserves(tmp_pat
         def append_data(self, frame): pass
     monkeypatch.setattr(imageio.v2, 'get_writer', lambda *a, **kw: Writer())
     args = SimpleNamespace(out=tmp_path, case=0, seed=2, num_candidates=2, execute_steps=2,
-                           subgoal_steps=50, max_steps=3, vlm_socket='unused', force_candidate_zero=False)
+                           subgoal_steps=50, max_steps=3, vlm_socket='unused', force_candidate_zero=False, mode=mode)
     fk = SimpleNamespace(skeleton=lambda state: 0)
     if all_invalid:
         with pytest.raises(RuntimeError, match='rejected every'):
@@ -123,10 +124,73 @@ def test_real_loop_orchestration_executes_selected_prefix_and_reobserves(tmp_pat
         assert json.loads((tmp_path/'result.json').read_text())['success'] is None
     else:
         result = module.run_episode(Env(), Policy(), WM(), Judge(), Proxy(), fk, args)
-        assert executed == [1., 1., 1.]
+        assert executed == ([0., 0., 0.] if mode == 'baseline' else [1., 1., 1.])
         assert seen == [0, 2]  # Second sampling uses the updated real observation.
-        assert imagined == [0., 1., 0., 1.]
+        assert imagined == ([] if mode == 'baseline' else [0., 1., 0., 1.])
         assert result['decisions'] == 2 and result['steps'] == 3
+
+
+def test_independent_judge_hides_original_candidate_index(tmp_path, monkeypatch):
+    import robowits.vlm_reward as module
+    seen = []
+    def judge(self, current, predictions, task, subgoal, out, **kwargs):
+        assert len(predictions) == 1
+        seen.append(predictions[0])
+        return [{'id':0,'valid':True,'score':.4,'reason':'motion'}]
+    monkeypatch.setattr(module.VLMReward, 'judge', judge)
+    rows = module.IndependentVLMReward('unused').judge(None, [17,23], 'task','goal', tmp_path)
+    assert seen == [17,23] and [r['id'] for r in rows] == [0,1]
+
+
+def test_reward_placeholder_is_not_evidence():
+    with pytest.raises(ValueError, match='reason'):
+        parse_rewards(json.dumps({'candidates':[{'id':0,'valid':True,'score':.5,
+                                                  'reason':'brief visual evidence'}]}),1)
+
+
+def test_selection_margin_retains_zero_for_observed_judge_noise():
+    from robowits.closed_loop_score import choose
+    rows = [{'valid':True,'score':.0}, {'valid':True,'score':.05}]
+    assert choose(rows, margin=.1, require_baseline=False) == 0
+    rows[1]['score'] = .2
+    assert choose(rows, margin=.1, require_baseline=False) == 1
+
+
+def test_imagination_reuse_requires_all_inputs_identical(tmp_path):
+    from robowits.eef_loop import reuse_prediction
+    source, destination = tmp_path/'source', tmp_path/'destination'
+    source.mkdir(); destination.mkdir()
+    a = np.zeros((2,2,3),np.uint8)
+    np.savez(source/'input.npz', history=a, past=a+1, future=a+2)
+    np.save(source/'prediction.npy', a+3)
+    assert reuse_prediction(source,destination,a,a+1,a+4) is None
+    assert not (destination/'prediction.npy').exists()
+    np.testing.assert_array_equal(reuse_prediction(source,destination,a,a+1,a+2),a+3)
+    assert json.loads((destination/'reuse.json').read_text())['inputs_exactly_equal']
+
+
+def test_paired_policy_draw_reuse_rejects_input_prompt_seed_changes(tmp_path):
+    from robowits.eef_loop import anchor_candidate_zero
+    reference, destination = tmp_path/'reference',tmp_path/'destination'
+    source = reference/'decision-0000'
+    source.mkdir(parents=True); destination.mkdir(); (reference/'policy-queue').mkdir()
+    obs = {'state':np.zeros(14), 'prompt':'pick up lemon'}
+    np.savez(source/'policy-input.npz',state=obs['state'])
+    np.save(source/'candidates.npy',np.zeros((1,10,14)))
+    (reference/'policy-queue/request-000001.json').write_text(json.dumps({'prompt':obs['prompt'],'seeds':[5]}))
+    for changed,seeds in [(dict(obs,state=np.ones(14)),[5]),(dict(obs,prompt='wrong'),[5]),(obs,[6])]:
+        with pytest.raises(RuntimeError,match='Cannot reuse'):
+            anchor_candidate_zero(reference,0,changed,seeds,np.ones((2,10,14)),destination)
+    actual = anchor_candidate_zero(reference,0,obs,[5,6],np.ones((2,10,14)),destination)
+    assert not actual[0].any() and actual[1].all()
+    assert np.load(destination/'sampled-candidates.npy').all()
+    bank = np.stack([np.zeros((10,14)),np.full((10,14),2.)])
+    np.save(source/'candidates.npy',bank)
+    (reference/'policy-queue/request-000001.json').write_text(json.dumps({'prompt':obs['prompt'],'seeds':[5,6]}))
+    with pytest.raises(RuntimeError,match='seeds differ'):
+        anchor_candidate_zero(reference,0,obs,[5,7],actual,destination,all_candidates=True)
+    np.testing.assert_array_equal(anchor_candidate_zero(reference,0,obs,[5,6],actual,destination,all_candidates=True),bank)
+    assert np.load(destination/'sampled-candidates.npy').all()  # Preserve fresh inference evidence.
 
 
 def test_reward_selects_best_of_many_and_excludes_invalid():

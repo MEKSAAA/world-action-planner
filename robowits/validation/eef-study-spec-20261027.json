@@ -1,0 +1,51 @@
+{
+  "python": "/home/junwenmiao/code/RoboWits-genesis131/.venv/bin/python",
+  "environment": {
+    "CUDA_VISIBLE_DEVICES": "1",
+    "PYOPENGL_PLATFORM": "egl",
+    "GS_GYM_ASSET_PATHS": "/home/junwenmiao/code/RoboWits/assets",
+    "PYTHONPATH": "/home/junwenmiao/code/world-action-planner:/home/junwenmiao/code/RoboWits-wap-eef:/home/junwenmiao/code/RoboWits-wap-eef/third_party/lerobot/src"
+  },
+  "common": {
+    "sim_root": "/home/junwenmiao/code/RoboWits-wap-eef",
+    "policy_python": "/data/mjw/world-action-planner/openpi-venv/bin/python",
+    "openpi_runtime": "/data/mjw/world-action-planner/openpi-runtime",
+    "policy_checkpoint": "/data/robowits-checkpoints/pi05_robowits_subgoal_eef/lemon_eef_b64/29999",
+    "wm_python": "/data/mjw/world-action-planner/wm-venv/bin/python",
+    "wm_checkpoint": "/data/mjw/world-action-planner/robowits-lemon/20261021/experiment/train/checkpoints/latest-step=2000.ckpt",
+    "ckpts": "/data/mjw/world-action-planner/ckpts/world_models",
+    "wan": "/data/mjw/world-action-planner/ckpts/Wan2.1-T2V-1.3B",
+    "urdf": "/home/junwenmiao/code/RoboWits/assets/hf_assets/marvin_bimanual/urdf/marvin_pika.urdf",
+    "policy_gpu": "1",
+    "wm_gpu": "0",
+    "num_candidates": 2,
+    "execute_steps": 5,
+    "subgoal_steps": 50,
+    "eval_json": "/data/mjw/world-action-planner/eef-study/20261027/novel-scenes.json",
+    "vlm_socket": "/tmp/wap-study-claude-20261027.sock",
+    "max_steps": 1000,
+    "reward_mode": "independent",
+    "selection_margin": 0.1
+  },
+  "trials": [
+    {
+      "case": 0,
+      "seed": 202610270
+    },
+    {
+      "case": 1,
+      "seed": 202610271
+    },
+    {
+      "case": 2,
+      "seed": 202610272
+    }
+  ],
+  "judge": {
+    "provider": "Anthropic",
+    "model": "claude-fable-5-1",
+    "reward_prompt": "WAP vlm_reward.py v2; independent single-candidate evaluation",
+    "margin_rationale": "0.10 predeclared above 0.05 control variability; pilot choice, not statistically calibrated"
+  },
+  "interpretation": "Three-case feasibility pilot, not a statistically powered success-rate claim"
+}
