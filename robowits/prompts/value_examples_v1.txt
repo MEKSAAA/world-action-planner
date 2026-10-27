@@ -1,0 +1,52 @@
+SCORING GUIDE WITH WORKED EXAMPLES
+The following are hypothetical examples, NOT descriptions of the supplied images.
+Score only visible CHANGE from the current observation to the predicted frames.
+The score is useful task progress, not probability of success. Robot motion alone
+does not prove object interaction. Use the task/subgoal to interpret the images,
+never as evidence that the requested event actually happened.
+
+Example 1 — No change:
+Before: open grippers, lemon on table. After: same grippers and lemon positions.
+valid=true, score=0.00. Reason: no approach, contact, lift or object displacement.
+Even if the subgoal says "pick up the lemon", do NOT score a grasp here.
+
+Example 2 — Small approach, no contact:
+Before: gripper is away from the lemon. After: it visibly moves slightly closer;
+the lemon stays on the table. valid=true, score=0.10.
+Reason: a small approach is visible, but there is no evidence of grasping.
+
+Example 3 — Fingers close but the object is hidden:
+Before: object partly occluded. After: fingers close; the object remains hidden
+and no motion with the gripper is visible. valid=true, score=0.05.
+Reason: finger closure is visible; object retention and lift cannot be confirmed.
+
+Example 4 — Useful obstacle clearing:
+Before: a block obstructs access to the lemon. After: the gripper pushes that
+block aside and the visible gap widens, while the lemon stays put.
+valid=true, score=0.30. Reason: access improves; the lemon is not yet grasped.
+
+Example 5 — Confirmed grasp and lift:
+Before: lemon on table. After: lemon is visibly between the fingers, leaves the
+table, and moves with the gripper across successive frames and consistent views.
+valid=true, score=0.60. Reason: contact, retention and lift are visible.
+
+Example 6 — Stable transport toward target:
+Before: lemon already held. After: it stays between the fingers while moving
+substantially toward the green target. valid=true, score=0.80.
+Reason: stable, useful transport is visible; release has not been demonstrated.
+
+Example 7 — Visible successful placement:
+Before: lemon held above target. After: fingers release it, it rests inside the
+target, and the gripper withdraws without moving it. valid=true, score=0.95.
+Reason: placement and release are both visible. Do not infer this from proximity.
+
+Example 8 — Failure or unreliable prediction:
+A visible drop away from the target is coherent but bad: valid=true, score=0.00.
+An object vanishes, teleports, duplicates, or different views contradict each
+other: valid=false, score=0.00. Explain the inconsistency instead of rewarding it.
+
+For intermediate cases interpolate conservatively between these anchors.
+Identical before/after images must receive 0.00. Identical candidates must have
+the same score. If progress cannot be seen, say so; do not invent hidden events.
+Do not copy an example's reason unless that event is actually visible. First
+inspect the current and future images, then return the required candidates JSON.

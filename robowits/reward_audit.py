@@ -17,12 +17,13 @@ def main():
     p.add_argument('--out',type=Path,required=True)
     p.add_argument('--socket',type=Path,required=True)
     p.add_argument("--independent", action="store_true")
+    p.add_argument('--examples', action='store_true')
     args=p.parse_args();args.out.mkdir(parents=True,exist_ok=False)
     deadline=time.monotonic()+300
     while not args.socket.exists():
         if time.monotonic()>deadline:raise TimeoutError('VLM socket did not appear')
         time.sleep(1)
-    judge=(IndependentVLMReward if args.independent else VLMReward)(args.socket);rows=[]
+    judge=(IndependentVLMReward if args.independent else VLMReward)(args.socket,examples=args.examples);rows=[]
     for i,d in enumerate(json.loads((args.source/'decisions.json').read_text())):
         folder=args.source/f'decision-{i:04d}'
         current=imageio.imread(folder/'reward/current.png')

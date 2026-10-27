@@ -12,10 +12,12 @@ import numpy as np
 from PIL import Image, ImageDraw
 
 
-def generate(socket_path, prompt, images, out):
+def generate(socket_path, prompt, images, out, *, examples=None):
     out = Path(out)
     out.mkdir(parents=True, exist_ok=True)
     request = {'prompt': prompt, 'images': [str(Path(p).resolve()) for p in images]}
+    if examples is not None:
+        request['examples'] = examples
     (out/'request.json').write_text(json.dumps(request, indent=2))
     with socket.socket(socket.AF_UNIX, socket.SOCK_STREAM) as client:
         client.settimeout(300)
@@ -63,8 +65,9 @@ def parse_rewards(raw, count):
 
 
 class VLMReward:
-    def __init__(self, socket_path):
+    def __init__(self, socket_path, *, examples=False):
         self.socket_path = socket_path
+        self.examples = examples
 
     def judge(self, current, predictions, task, subgoal, out, *, valid_future_frames=6):
         out = Path(out)
@@ -102,6 +105,8 @@ Return a JSON object with one key, candidates, containing exactly one object per
 Each object must have exactly these fields: id (integer), valid (boolean), score (number from 0 to 1),
 reason (a specific description of what visibly changes or stays unchanged).
 Do not echo instructions or use generic placeholder reasons. No markdown.'''
+        if self.examples:
+            prompt += '\n\n' + (Path(__file__).parent/'prompts/value_examples_v1.txt').read_text()
         raw = generate(self.socket_path, prompt, images, out/'vlm')
         return parse_rewards(raw, len(predictions))
 

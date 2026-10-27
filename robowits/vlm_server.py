@@ -28,7 +28,14 @@ def main():
                 request = json.loads(self.rfile.readline(8_000_000))
                 content = [{'type': 'image', 'image': Image.open(path).convert('RGB')} for path in request['images']]
                 content.append({'type': 'text', 'text': request['prompt']})
-                inputs = processor.apply_chat_template([{'role': 'user', 'content': content}], tokenize=True,
+                messages = []
+                for example in request.get('examples', []):
+                    example_content = [{'type':'image','image':Image.open(path).convert('RGB')} for path in example['images']]
+                    example_content.append({'type':'text','text':example['prompt']})
+                    messages.extend([{'role':'user','content':example_content},
+                                     {'role':'assistant','content':example['answer']}])
+                messages.append({'role':'user','content':content})
+                inputs = processor.apply_chat_template(messages, tokenize=True,
                          add_generation_prompt=True, enable_thinking=False, return_dict=True, return_tensors='pt').to('cuda:0')
                 started = time.monotonic()
                 with torch.inference_mode():
@@ -36,6 +43,7 @@ def main():
                 tokens = result[0, inputs['input_ids'].shape[-1]:]
                 response = {'raw': processor.decode(tokens, skip_special_tokens=True), 'model': str(args.model),
                             'seconds': time.monotonic()-started, 'output_tokens': len(tokens),
+                            'example_count': len(request.get('examples', [])),
                             'reached_token_limit': len(tokens) >= args.max_new_tokens}
             except Exception as error:
                 response = {'error': f'{type(error).__name__}: {error}'}
