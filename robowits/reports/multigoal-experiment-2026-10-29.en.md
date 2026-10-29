@@ -39,6 +39,14 @@ All three saved action branches were replayed independently from native step 250
 
 Gemini's own step-250 bank also has completed cross-scores and physical branches. Both judges chose 2 without WM; online Gemini switched to 0 with scores 0.42 / 0.20 / 0.30, while offline Qwen gave all zeros and retained 2. Actual lemon displacement was 5.10 / 4.96 / 5.73 mm and maximum lift only 0.236 / 0.312 / 0.382 mm. All branches recorded only left `Link8_L` contact, which does not establish a stable grasp. Selected candidate 0 reduced target distance only about 0.16 mm more than original candidate 2; block displacements were also only about 3–5 mm. Prefix and selected-branch joints exactly matched online execution. These local results do not establish a task-performance gain. [Gemini step-250 actual / condition / WM videos](/data/mjw/world-action-planner/multigoal/20261029/formal-gemini-step250-physical/review/review.md). The two providers' step-250 banks come from already-diverged trajectories, not the same scene state.
 
+## Step 500: added green regions and unsupported high progress scores
+
+At Qwen decision 50, online Qwen scored all candidates zero and retained 2. Offline Gemini scored 0.70 / 0.70 / 0.62, retained its own no-WM choice 1, and described the lemon as transported above the green target. Actual initial planar target distance was 521.83 mm; final distances were 522.23 / 522.16 / 521.77 mm. None reached the target. All replay-prefix joints matched exactly, and the selected branch exactly reproduced online execution.
+
+The comparison image shows new bright-green regions beside the lemon in WM left-wrist predictions, absent from aligned actual frames; the original target remains on the other side of the table. Under the fixed color test `G>100, G>R+40, G>B+40`, every actual left-wrist frame has zero matching pixels; final predicted frames have 925 / 1,005 / 1,119. This is a color diagnostic, not a semantic mask. Prediction distortion may have misled Gemini into interpreting transport toward the target, but no independent intervention has separated WM and judge causal contributions. Qwen's zero scores do not establish recognition of this artifact: its reasons focus on the object being stationary relative to the gripper.
+
+[Candidate videos, actual/predicted comparison, and physical records](/data/mjw/world-action-planner/multigoal/20261029/formal-qwen-step500-physical/review/review.md). Neither judge changed its own no-WM choice in this bank, so this is not evidence of WM-driven behavior improvement.
+
 ## Agreed design
 
 The user chose plausible errors in timing or object choice, with one expected useful candidate, and independent Gemini/Qwen proposer-and-judge pipelines plus cross-scoring of identical predictions.
