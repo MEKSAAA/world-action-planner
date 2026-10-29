@@ -24,7 +24,8 @@ from .eef_loop import candidate_seeds, history_inputs
 from .geometry import Marvin, pack
 from .multigoal_backend import Backend
 from .multigoal_proposals import Proposer
-from .multigoal_value import TaskValue, best
+from .multigoal_value import TaskValue, best, select_outcome
+from .multigoal_pairing import reuse_bank, validate_reference
 from .openpi_client import OpenPIClient
 
 
@@ -41,6 +42,14 @@ def run(env, policy, wm, proxy, fk, config, out):
     env.set_eval_dataset_idx(config['case'])
     obs, _ = env.reset(seed=config['seed'])
     write_json(out/'initial.json', snapshot(env))
+    reference = Path(config['reference_run']) if config.get('reference_run') else None
+    paired = reference is not None
+    reference_decisions = reference_trajectory = None
+    if paired:
+        if not same_state(snapshot(env), json.loads((reference/'initial.json').read_text())):
+            raise ValueError('Paired initial states differ')
+        reference_decisions = json.loads((reference/'decisions.json').read_text())
+        reference_trajectory = np.load(reference/'trajectory.npz')
     proposer = Proposer(backend(config, config['proposer']), config['num_subgoals'], config.get('manual'))
     judges = {name: TaskValue(backend(config, name)) for name in config['judges']}
     history = deque(maxlen=180)
@@ -82,26 +91,35 @@ def run(env, policy, wm, proxy, fk, config, out):
                 index = len(decisions)
                 folder = out/f'decision-{index:04d}'
                 folder.mkdir()
-                t0 = time.monotonic()
-                goals = proposer.propose(env, folder/'proposals', config['seed']+index)
-                proposal_seconds = time.monotonic()-t0
-                candidates, languages, metadata = [], [], []
-                seeds = candidate_seeds(config['seed'], index, len(goals)*config['samples_per_subgoal'])
-                policy_seconds = 0.
-                for g, (goal, point, valid) in enumerate(goals):
-                    inp = policy_observation(obs, goal, point, valid)
-                    goal_dir = folder/f'goal-{g}'
-                    goal_dir.mkdir()
-                    offset = g*config['samples_per_subgoal']
-                    goal_seeds = seeds[offset:offset+config['samples_per_subgoal']]
-                    sampled, seconds = policy.sample(inp, goal_seeds, goal_dir)
-                    policy_seconds += seconds
-                    for draw, action in enumerate(sampled):
-                        metadata.append({'id': len(candidates), 'goal_id': g, 'draw': draw,
-                                         'seed': goal_seeds[draw], 'goal': asdict(goal)})
-                        candidates.append(action)
-                        languages.append(goal.language)
-                candidates = np.asarray(candidates)
+                seeds = candidate_seeds(config['seed'], index, config['num_subgoals']*config['samples_per_subgoal'])
+                if paired:
+                    if index >= len(reference_decisions):
+                        raise ValueError('Paired reference ended before unchanged prefix')
+                    previous = reference_decisions[index]
+                    if previous['step'] != env._step_count or previous['observation_sha256'] != hashlib.sha256(pack(obs['pixels']).tobytes()).hexdigest():
+                        raise ValueError('Paired step or RGB diverged before alternative selection')
+                    candidates, languages, metadata = reuse_bank(reference,index,obs,seeds,folder)
+                    proposal_seconds = policy_seconds = 0.
+                else:
+                    t0 = time.monotonic()
+                    goals = proposer.propose(env, folder/'proposals', config['seed']+index)
+                    proposal_seconds = time.monotonic()-t0
+                    candidates, languages, metadata = [], [], []
+                    policy_seconds = 0.
+                    for g, (goal, point, valid) in enumerate(goals):
+                        inp = policy_observation(obs, goal, point, valid)
+                        goal_dir = folder/f'goal-{g}'
+                        goal_dir.mkdir()
+                        offset = g*config['samples_per_subgoal']
+                        goal_seeds = seeds[offset:offset+config['samples_per_subgoal']]
+                        sampled, seconds = policy.sample(inp, goal_seeds, goal_dir)
+                        policy_seconds += seconds
+                        for draw, action in enumerate(sampled):
+                            metadata.append({'id': len(candidates), 'goal_id': g, 'draw': draw,
+                                             'seed': goal_seeds[draw], 'goal': asdict(goal)})
+                            candidates.append(action)
+                            languages.append(goal.language)
+                    candidates = np.asarray(candidates)
                 np.save(folder/'candidates.npy', candidates)
                 write_json(folder/'candidate-map.json', metadata)
                 targets = np.asarray([chunk_targets(obs['agent_pos_ee'], c) for c in candidates])
@@ -111,8 +129,13 @@ def run(env, policy, wm, proxy, fk, config, out):
                 position_spread = np.linalg.norm(targets[:,None,:,:6]-targets[None,:,:,:6],axis=-1).mean(axis=-1)
                 np.save(folder/'pairwise-position-distance-m.npy', position_spread)
                 current = pack(obs['pixels'])
-                no_wm = {name: judge.without_wm(current, env.task_description, languages,
-                    folder/f'no-wm-{name}') for name, judge in judges.items()}
+                if paired:
+                    no_wm = previous['no_wm']
+                    write_json(folder/'no-wm-reuse.json',{'source':str(reference/f'decision-{index:04d}'),
+                               'same_current_observation_and_candidates':True,'scores':no_wm})
+                else:
+                    no_wm = {name: judge.without_wm(current, env.task_description, languages,
+                        folder/f'no-wm-{name}') for name, judge in judges.items()}
                 scores, predictions = {}, []
                 wm_seconds = proxy_seconds = 0.
                 if mode == 'selection':
@@ -132,18 +155,27 @@ def run(env, policy, wm, proxy, fk, config, out):
                         scores[name] = judge.judge(current, predictions, env.task_description,
                             languages, folder/f'wm-{name}', valid_future_frames=6)
                 primary = config['primary_judge']
-                chosen = best(scores[primary] if mode == 'selection' else no_wm[primary])
+                chosen, choice_reason = (select_outcome(scores[primary], no_wm[primary]) if mode == 'selection'
+                                         else (best(no_wm[primary]), 'no_wm_control'))
                 decision = {'step': env._step_count, 'selected': chosen, 'candidate_map': metadata,
+                    'choice_reason': choice_reason, 'paired_candidate_bank': paired,
                     'no_wm': no_wm, 'wm': scores, 'proposal_seconds': proposal_seconds,
                     'policy_seconds': policy_seconds, 'proxy_seconds': proxy_seconds, 'wm_seconds': wm_seconds,
                     'observation_sha256': hashlib.sha256(current.tobytes()).hexdigest()}
                 decisions.append(decision)
                 write_json(out/'decisions.json', decisions)
+                if paired and chosen != previous['selected']:
+                    paired = False
                 for target in targets[chosen]:
                     action = control_action(obs['agent_pos_ee'], target)
                     obs, _, terminated, truncated, info = env.step(action)
                     actions.append(action)
                     observe()
+                    if paired:
+                        step = len(actions)
+                        if not np.array_equal(action, reference_trajectory['actions'][step-1]) or not np.allclose(
+                                joints[-1],reference_trajectory['joints'][step],atol=1e-5,rtol=0):
+                            raise ValueError('Paired executed state diverged without an alternative selection')
                     result.update(steps=env._step_count, success=bool(info['is_success']))
                     if terminated or truncated or env._step_count >= config['max_steps']:
                         break
@@ -184,9 +216,11 @@ def main():
         raise ValueError('Positive step and diagnostic budgets required')
     if config.get('prefix_run') and not config.get('diagnostic_decisions'):
         raise ValueError('Recorded prefix warm starts are restricted to diagnostic runs')
+    if config.get('reference_run') and (config.get('prefix_run') or config['mode'] != 'selection'):
+        raise ValueError('Full paired references require selection mode and no warm-start prefix')
     # Resolve relative experiment paths before workers change working directories.
     for key in ('out','sim_root','policy_python','openpi_runtime','policy_checkpoint',
-                'wm_python','wm_checkpoint','ckpts','wan','urdf','eval_json','manual'):
+                'wm_python','wm_checkpoint','ckpts','wan','urdf','eval_json','manual','reference_run'):
         if config.get(key) is not None:
             # Preserve virtualenv executable symlinks: resolving bin/python to
             # the system binary would silently drop the environment's packages.
@@ -204,14 +238,17 @@ def main():
             backend(config, name)
         protocol = dict(config, action_mode='EE_DELTA', observation_mode='JOINT', execute_steps=10,
             wm_future_frames=20, judged_future_frames=6, terminal_pose_padding_steps=20,
+            wm_choice_rule='prefer no-WM choice on a maximum-score tie; all-invalid fallback to no-WM choice',
             policy_training='none; checkpoint and normalization read-only',
             sim_commit=subprocess.check_output(['git','rev-parse','HEAD'],cwd=sim_root,text=True).strip(),
             source_sha256={n: file_sha256(Path(__file__).with_name(n)) for n in (
                 'multigoal_loop.py','multigoal_backend.py','multigoal_proposals.py','multigoal_value.py',
-                'eef_actions.py','openpi_worker.py','closed_loop_worker.py')},
+                'eef_actions.py','openpi_worker.py','closed_loop_worker.py','multigoal_pairing.py')},
             wm_sha256=file_sha256(Path(config['wm_checkpoint'])),
             manual_sha256=file_sha256(Path(config['manual'])) if config.get('manual') else None)
         write_json(out/'protocol.json', protocol)
+        if config.get('reference_run'):
+            validate_reference(protocol,config['reference_run'])
         write_json(out/'status.json', {'status':'initializing','pid':os.getpid()})
         env = gs_gym.get_task_class(config['task_id'])(
             control_mode='EE_DELTA', observation_mode='JOINT', max_episode_steps=config['max_steps'],

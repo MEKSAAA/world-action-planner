@@ -76,3 +76,20 @@ def best(scores):
         raise RuntimeError('Every candidate was rejected; no action executed')
     # Candidate list is shuffled before sampling; ties favor the first saved draw.
     return max(valid, key=lambda s: s['score'])['id']
+
+
+def select_outcome(scores, no_wm_scores):
+    """Keep the no-WM choice when WM supplies no discriminating valid evidence.
+
+    A complete rejection is logged as fallback, never reported as WM approval.
+    Among tied maximum WM scores, prefer the no-WM choice if it is in the tie.
+    """
+    control = best(no_wm_scores)
+    valid = [s for s in scores if s['valid']]
+    if not valid:
+        return control, 'all_wm_invalid_fallback_to_no_wm'
+    maximum = max(s['score'] for s in valid)
+    tied = [s['id'] for s in valid if abs(s['score']-maximum) <= 1e-12]
+    if control in tied:
+        return control, 'no_wm_choice_also_maximum_wm_score'
+    return tied[0], 'higher_valid_wm_score'

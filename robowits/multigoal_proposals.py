@@ -13,7 +13,8 @@ from .multigoal_backend import strict_json, validated_complete
 GROUNDING = '''Use only the CURRENT ego RGB image. Anchor [x,y] is a visible object
 surface in normalized image coordinates [0,1], origin top-left. Offset [dx,dy,dz]
 is meters in robot base coordinates: +X away from robot, +Y robot's left, +Z up.
-Choose arm left, right, both, or none. For none set anchor and offset to zero.
+Choose arm left, right, both, or none. Use none only to withdraw or stay still,
+never to manipulate an object. For none set anchor and offset to zero.
 Each language is a short imperative of 2–12 words. Do not command joint values.
 Every goal has exactly language, arm, anchor, offset. Do not invent invisible objects.
 Return JSON only, with one key goals containing the requested list of goals.'''
@@ -38,7 +39,8 @@ def parse_goals(raw, count):
             raise ValueError('Unconditioned goal must use zero coordinates')
         goals.append(goal)
     if len({g.language.lower() for g in goals}) != count:
-        raise ValueError('Duplicate subgoal languages')
+        raise ValueError('Duplicate subgoal languages: propose distinct instructions with different '
+                         'objects, prerequisites or approaches; changing only the arm field is insufficient')
     return goals
 
 

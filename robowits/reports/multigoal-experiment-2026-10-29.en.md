@@ -36,3 +36,11 @@ Report native success, failure type, grounding errors, action diversity, predict
 At roughly 45 seconds per WM candidate, eight candidates cost approximately six minutes per decision before scoring. A 100-decision episode may exceed ten hours. Terminal padding may affect jointly generated scored frames, and short-horizon predictions may not reveal the eventual benefit of clearing an obstacle.
 
 Gemini integration follows the [GenerateContent API](https://ai.google.dev/api/generate-content). Credentials remain in memory and are excluded from experiment logs.
+
+## Frozen protocol for subsequent full paired runs
+
+The earlier full no-WM run is exploratory because prompts were subsequently improved. Formal pairs must use the same frozen code and model/task configuration. Until the first different selected action, reuse the entire verified reference bank and check complete policy inputs, subgoals, seeds, targets and executed joints. After divergence, each run observes its own state.
+
+When WM maximum scores tie and include the no-WM choice, retain that choice. If all predictions are rejected, explicitly log fallback to the no-WM choice; never count this as WM approval or benefit. Otherwise choose the highest valid WM score.
+
+At recorded step 350, Qwen initially repeated identical instructions while changing only the arm. Specific validation feedback resolved the literal duplication in a subsequent diagnostic. The eight action chunks now differ by up to 19.7 mm in mean two-arm position trajectories. Physical branches and WM predictions are pending. “Move towards” and “move to” remain semantically similar, so schema validity alone does not establish semantic diversity.

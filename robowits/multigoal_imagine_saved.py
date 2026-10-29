@@ -20,7 +20,7 @@ from .eef_actions import EEFProxy
 from .eef_loop import history_inputs
 from .geometry import Marvin, pack
 from .multigoal_loop import backend
-from .multigoal_value import TaskValue, best
+from .multigoal_value import TaskValue, best, select_outcome
 
 
 def main():
@@ -83,9 +83,11 @@ def main():
             scores[provider]=TaskValue(backend(config,provider)).judge(current,predictions,
                 env.task_description,languages,args.out/provider,valid_future_frames=6)
             write_json(args.out/'scores.json',scores)
-        chosen={name:best(rows) if any(r['valid'] for r in rows) else None for name,rows in scores.items()}
+        selected={name:select_outcome(rows,decision['no_wm'][name]) for name,rows in scores.items()}
+        chosen={name:choice[0] for name,choice in selected.items()}
         write_json(args.out/'result.json',{'status':'diagnostic_complete','wm_seconds':seconds,
             'wm_selected':chosen,'no_wm_selected':{name:best(rows) for name,rows in decision['no_wm'].items()},
+            'selection_reasons':{name:choice[1] for name,choice in selected.items()},
             'native_task_success':None})
         write_json(args.out/'status.json',{'status':'diagnostic_complete'})
     except BaseException:

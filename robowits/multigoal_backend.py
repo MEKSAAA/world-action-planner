@@ -36,7 +36,22 @@ class Backend:
     def complete(self, prompt, images, out):
         out = Path(out)
         if self.name == 'qwen':
-            return generate(self.socket, prompt, images, out)
+            # The existing local service belongs to an earlier experiment and
+            # may shut down during a long run. Its replacement supervisor owns
+            # restart; only retry a missing/reset connection, never invent text.
+            connection_errors = []
+            for attempt in range(19):
+                try:
+                    raw = generate(self.socket, prompt, images, out)
+                except (FileNotFoundError, ConnectionRefusedError, ConnectionResetError) as exc:
+                    connection_errors.append({'attempt':attempt,'type':type(exc).__name__})
+                    out.mkdir(parents=True, exist_ok=True)
+                    (out/'connection-retries.json').write_text(json.dumps(connection_errors,indent=2))
+                    if attempt == 18:
+                        raise
+                    time.sleep(5)
+                else:
+                    return raw
         out.mkdir(parents=True, exist_ok=True)
         config = {'temperature': 1.0, 'maxOutputTokens': 8192,
                   'responseMimeType': 'application/json',
@@ -102,16 +117,19 @@ def strict_json(raw):
 def validated_complete(backend, prompt, images, out, validator, attempts=3):
     """Retry malformed answers, retaining every raw response; never repair scores."""
     out = Path(out)
+    validation_error = None
     for attempt in range(attempts):
         folder = out/f'attempt-{attempt}'
         reminder = '' if attempt == 0 else (
             '\nYour previous response did not match the requested JSON schema. '
             'Return exactly ONE JSON object with the requested top-level key and fields. '
-            'No bare array, markdown, repeated answer, or trailing text.')
+            'No bare array, markdown, repeated answer, or trailing text. '
+            f'Validation error to correct: {validation_error}')
         raw = backend.complete(prompt+reminder, images, folder)
         try:
             result = validator(raw)
         except (ValueError, TypeError, KeyError) as exc:
+            validation_error = str(exc)
             folder.mkdir(parents=True, exist_ok=True)
             (folder/'validation-error.json').write_text(json.dumps({'type':type(exc).__name__, 'error':str(exc)}))
             if attempt+1 == attempts:

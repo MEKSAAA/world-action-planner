@@ -6,7 +6,7 @@ import pytest
 
 from robowits.multigoal_backend import Backend, strict_json, validated_complete
 from robowits.multigoal_proposals import parse_goals, Proposer
-from robowits.multigoal_value import TaskValue, best
+from robowits.multigoal_value import TaskValue, best, select_outcome
 
 
 def test_json_rejects_duplicate_and_nonfinite():
@@ -88,8 +88,49 @@ def test_invalid_json_requeries_without_repairing_scores(tmp_path):
         def __init__(self):self.calls=0
         def complete(self,prompt,images,out):
             self.calls+=1
+            if self.calls==2:
+                assert 'Validation error to correct: Extra data' in prompt
             return '{"a":0} trailing' if self.calls==1 else '{"a":1}'
     backend=InvalidThenValid()
     assert validated_complete(backend,'prompt',[],tmp_path,strict_json)=={'a':1}
     assert backend.calls==2
     assert (tmp_path/'attempt-0/validation-error.json').exists()
+
+
+def test_wm_tie_and_invalid_are_explicit_control_fallbacks():
+    control=[{'id':0,'valid':True,'score':.1},{'id':1,'valid':True,'score':.8}]
+    flat=[{'id':0,'valid':True,'score':0.},{'id':1,'valid':True,'score':0.}]
+    assert select_outcome(flat,control)==(1,'no_wm_choice_also_maximum_wm_score')
+    rejected=[dict(r,valid=False) for r in flat]
+    assert select_outcome(rejected,control)==(1,'all_wm_invalid_fallback_to_no_wm')
+    flat[0]['score']=.3
+    assert select_outcome(flat,control)==(0,'higher_valid_wm_score')
+
+
+def test_paired_bank_rejects_changed_inputs_and_seeds(tmp_path,monkeypatch):
+    pytest.importorskip('hier_policy')
+    from hier_policy import rollout
+    from robowits.eef_actions import chunk_targets
+    from robowits.multigoal_pairing import reuse_bank
+    monkeypatch.setattr(rollout,'policy_observation',lambda obs,goal,point,valid:
+                        {'state':obs['state'],'prompt':goal.language})
+    source=tmp_path/'source/decision-0000'
+    (source/'proposals').mkdir(parents=True)
+    (source/'goal-0').mkdir()
+    goal={'language':'Pick up lemon','arm':'right','anchor':[.5,.5],'offset':[0,0,.02]}
+    (source/'proposals/goals.json').write_text(json.dumps({'goals':[
+        dict(goal,point_3d=[.5,0,-.3],valid=True)]}))
+    metadata=[{'id':i,'goal_id':0,'draw':i,'seed':i+2,'goal':goal} for i in range(2)]
+    (source/'candidate-map.json').write_text(json.dumps(metadata))
+    obs={'state':np.array([1,2]),'agent_pos_ee':np.zeros(14,np.float32)}
+    np.savez(source/'goal-0/policy-input.npz',state=obs['state'])
+    bank=np.zeros((2,10,14),np.float32)
+    np.save(source/'candidates.npy',bank)
+    np.save(source/'targets.npy',np.stack([chunk_targets(obs['agent_pos_ee'],c) for c in bank]))
+    folder=tmp_path/'accepted';folder.mkdir()
+    reused,_,_=reuse_bank(source.parent,0,obs,[2,3],folder)
+    assert np.array_equal(bank,reused)
+    with pytest.raises(ValueError,match='inputs'):
+        reuse_bank(source.parent,0,dict(obs,state=np.array([1,3])),[2,3],tmp_path/'bad')
+    with pytest.raises(ValueError,match='seeds'):
+        reuse_bank(source.parent,0,obs,[3,4],tmp_path/'bad')
