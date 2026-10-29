@@ -1,5 +1,7 @@
 # 完整 π0.5 → WM → Qwen 闭环运行
 
+> 后续状态：本回合已跑满 1,000 步，未成功，发生 6 次切换。已完成[详细错误分析](wm-qwen-error-analysis-2026-10-28.md)，包含首次切换的因果干预、Qwen 提示消融和 WM 条件诊断。以下为原始启动协议。
+
 本文件记录用户确认后的启动协议，**不是完成结果**。本次主实验是加入 WM 和 Qwen 的动作选择闭环，取消 50 步人工审核暂停。
 
 [实时 Markdown 进度](/data/mjw/world-action-planner/chunru-release/20261028/full-wm-qwen-case0/progress.md) · [任务状态 JSON](/data/mjw/world-action-planner/chunru-release/20261028/full-wm-qwen-case0/job-status.json)
