@@ -1,6 +1,21 @@
 # 多子目标 × Amber π0.5 × 微调 WM：实验方案与人工候选审核
 
-状态：两条 lemon 无 WM 对照及修订版 Gemini cube 无 WM 对照已结束；三条 WM 回合正在运行，人工版本待审核。2026-10-29。
+状态（2026-10-29 12:45 UTC）：Qwen lemon 完整配对已结束；Gemini lemon / cube 的 WM 回合仍在运行，Qwen cube 无 WM 对照已启动。人工版本待审核。
+
+## Qwen lemon 配对终局：WM 没有改变行为
+
+两组都在 **1,000 步达到上限、原生未成功**。完整核查确认，1,000 × 14 的动作数组、1,001 × 16 的关节状态数组逐元素完全相等；100 个当前观测哈希、候选池动作、目标位姿、元数据和最终选择全部一致。两条独立物理回放均为零关节误差、100 个决策画面匹配。
+
+Qwen 对全部 **300 个 WM 候选均给有效的 0 分**。因此 100 轮都按预先规定的并列规则保留无 WM 选择，改选 0 次；这是有效评分全零，不是无效评分触发回退。当前“短预测 + Qwen 评分”组合没有提供动作排序信号，但尚不能区分预测、短视野和评分器各自的责任。
+
+|设置|原生结果|步数|回合墙钟耗时|
+|---|---|---:|---:|
+|Qwen，无 WM|未成功|1,000|26.33 分钟|
+|Qwen + WM|未成功|1,000|280.39 分钟|
+
+本次耗时比为 **10.65 倍**；计时排除初始化、共享 GPU，WM 组还复用了全部候选与无 WM 评分，没有重复提议和策略推理，因此不是独立部署速度估计。两组 lemon 最终距目标均为 56.16 cm，初始 35.01 cm。单一初始状态不能估计总体成功率，离线 Gemini 的不同选择也没有进入这条在线轨迹。
+
+[完整配对证据、视频和可重复核查脚本](/data/mjw/world-action-planner/multigoal/20261029/qwen-paired-comparison/review.md)。固定交叉评分目前已有 9 个 lemon 候选池、18 行双模型记录，包含 Qwen 最后一次决策；[原始分数和理由](/data/mjw/world-action-planner/multigoal/20261029/formal-crossscore/review.md)。
 
 ## 最新完整回合结果
 
@@ -17,7 +32,7 @@ lemon case 1，完全相同的初始状态：
 
 [真实物体轨迹、完整视频及逐轮记录](/data/mjw/world-action-planner/multigoal/20261029/control-comparison/review.md)。Gemini 后期仍反复提出搬运/交接，但第 700 步后物体最大位移仅 0.126 mm；Qwen 已有明确的文字与空间目标不一致案例，见[定位核查图](/data/mjw/world-action-planner/multigoal/20261029/formal-review/qwen-without-wm/grounding.md)。阶段识别、计划切换和空间定位都需分开分析，不能把失败直接归因为策略完全忽略条件。
 
-两套 lemon WM 配对均已启动。Gemini 在第一轮从候选 0 改选为 1。2026-10-29 08:35 UTC 的保存数组核查表明，Qwen 前 620 步动作和关节状态与无 WM 对照逐元素完全一致，62 个复用候选池的动作、目标位姿和元数据全部重新核对通过；两套配对的初始状态完全相同。[配对前缀核查](/data/mjw/world-action-planner/multigoal/20261029/paired-prefix-check/review.md)。这是运行中前缀，不是终局；局部改选也不等于任务改进。
+Gemini lemon WM 配对仍在运行，第一轮从候选 0 改选为 1；Qwen 终局见上文。历史前缀记录：2026-10-29 08:35 UTC 的保存数组核查表明，Qwen 前 620 步动作和关节状态与无 WM 对照逐元素完全一致，62 个复用候选池的动作、目标位姿和元数据全部重新核对通过；两套配对的初始状态完全相同。[配对前缀核查](/data/mjw/world-action-planner/multigoal/20261029/paired-prefix-check/review.md)。这是运行中前缀，不是终局；局部改选也不等于任务改进。
 
 对照限制：无 WM 评分器看到当前 RGB 和候选文字，没有显式看到各候选的 arm/anchor/空间点；WM 组从预测中能获得动作空间信息。因此潜在提升还需区分几何信息与物体动态预测的贡献。提议/人工阶段识别目前使用单张 ego 图，评分使用多视角图；人工固定文本本身不会解决阶段或定位错误。
 
@@ -27,13 +42,13 @@ lemon case 1，完全相同的初始状态：
 
 修订版 Gemini cube 无 WM 对照现已完成 **1,000 步、原生未成功**（`terminated=false, truncated=true`），100 次选择，墙钟耗时 4,722.7 秒（78.7 分钟，排除初始化、共享 GPU）。独立物理回放通过全部 100 个决策画面检查，逐步关节误差为 0。cube 最终距目标中心 376.8 mm，初始为 432.3 mm；机器人接触容器 56 步，但没有与 cube 的直接接触（接触力阈值 0.01 N）。cube 最大高度增量 8.66 mm，不能解释为夹爪抓起。此次 **没有发生弃选**，所以不能把完成到 1,000 步归因于保持动作；Gemini 重新生成的轨迹与旧中止回合不同。对应 WM 回合已经从同一初态启动，仍无终局。[完整视频和选择记录](/data/mjw/world-action-planner/multigoal/20261029/formal-review/formal-cube-case1-hold/gemini-without-wm/review.md) · [原生回放证据](/data/mjw/world-action-planner/multigoal/20261029/formal-hold-native-replay/formal-cube-case1-hold/gemini-without-wm/review.md)。
 
-原版 Gemini cube 对照在第 750 步停止：评分器认为容器和方块不可见，将三个候选全部标为无效，`best()` 抛出异常。Qwen cube 也在第 130 步因全拒绝停止。两条记录均为 `status=error, success=null`，不是原生成功或 1,000 步终局；对应 WM 配对均没有启动。[Gemini 原始回合核查](/data/mjw/world-action-planner/multigoal/20261029/formal-review/cube-gemini-interrupted/review.md) · [Qwen 原始回合核查](/data/mjw/world-action-planner/multigoal/20261029/formal-review/cube-qwen-interrupted/review.md)。两条 lemon WM 仍按原冻结版本运行。
+原版 Gemini cube 对照在第 750 步停止：评分器认为容器和方块不可见，将三个候选全部标为无效，`best()` 抛出异常。Qwen cube 也在第 130 步因全拒绝停止。两条记录均为 `status=error, success=null`，不是原生成功或 1,000 步终局；对应 WM 配对均没有启动。[Gemini 原始回合核查](/data/mjw/world-action-planner/multigoal/20261029/formal-review/cube-gemini-interrupted/review.md) · [Qwen 原始回合核查](/data/mjw/world-action-planner/multigoal/20261029/formal-review/cube-qwen-interrupted/review.md)。两条 lemon WM 使用同一个原冻结版本，Qwen 现已结束。
 
 中止前缀的物理重放进一步确认：**物体没有掉出场景**。Gemini / Qwen 的 cube 最终位移仅 36.95 / 19.14 mm，容器位移 35.41 / 17.50 mm；cube 高度始终约 0.782–0.787 m。机器人分别有 474 / 92 步接触容器，却都没有直接接触 cube。逐步关节误差为 0，75 / 13 个已执行决策画面均通过哈希检查。评分器的“物体不可见/不在场景中”应与物理消失区分，遮挡与识别错误的贡献仍需看视频。新增弃选逻辑只解决异常中止，没有自动解决这些感知和取物问题。[真实物体轨迹与核查](/data/mjw/world-action-planner/multigoal/20261029/formal-cube-interrupted-replay/review.md)。
 
 单独修订协议增加显式弃选：无 WM 对照全部候选无效时，`selected=null`，保持本轮开始时的实测末端位姿 10 步，再重新观察和提议。WM 组仍可选择被 WM 评分器判为有效的候选；两位判断均无有效候选时才保持。保持动作单独计数，不标作策略采样或 WM 批准。默认旧行为仍为报错；新配对需显式启用 `all_invalid_action=hold`，且两组设置和源码哈希必须一致。修订协议不能与旧版中止记录拼接成一次完整回合。
 
-验证：16 项相关测试通过；在真实 cube 模拟器里注入全拒绝评分，两种模式均完成 1,000 步、100 次明确弃选，配对动作与全部关节状态逐项完全相等。模型调用在此验证中使用桩，**仅验证控制逻辑，不计入模型效果**。[验证证据](/data/mjw/world-action-planner/multigoal/20261029/abstention-native-integration/verification.json)。Gemini、Qwen 的 cube 修订配对均使用独立冻结 worktree `world-action-planner-multigoal-hold-eval`（`9c1ac29`），输出在 `formal-cube-case1-hold`，按 Gemini 对照→WM、Qwen 对照→WM 顺序运行；Gemini 对照已完成，配对 WM 正在运行，Qwen 两条等待启动。对应固定采样交叉评分和终局物理回放监控已启动，与原版输出分开。
+验证：16 项相关测试通过；在真实 cube 模拟器里注入全拒绝评分，两种模式均完成 1,000 步、100 次明确弃选，配对动作与全部关节状态逐项完全相等。模型调用在此验证中使用桩，**仅验证控制逻辑，不计入模型效果**。[验证证据](/data/mjw/world-action-planner/multigoal/20261029/abstention-native-integration/verification.json)。Gemini、Qwen 的 cube 修订配对均使用独立冻结 worktree `world-action-planner-multigoal-hold-eval`（`9c1ac29`），输出在 `formal-cube-case1-hold`，各自按对照→WM 运行。Qwen lemon 结束后，12:41 UTC 将尚未启动的 Qwen cube 配对调整为 policy GPU 0 / WM GPU 1，并独立启动其 supervisor；原排队父进程退出，Gemini supervisor 继续运行。Gemini 对照已完成、WM 正在运行，Qwen 对照已启动，其 WM 将在对照达到有效终局且显存满足预检后自动启动。仅修改未启动配对的设备配置，保存了原配置与 [调度交接记录](/data/mjw/world-action-planner/multigoal/20261029/formal-cube-case1-hold/parallel-handoff.json)，冻结推理代码及训练代码未改。对应固定采样交叉评分和终局物理回放监控已启动，与原版输出分开。
 
 ## cube 首轮改选：交叉评分与真实分支
 
