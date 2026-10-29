@@ -1,0 +1,86 @@
+{
+  "review_status": "draft",
+  "review_note": "User chose timing/object mistakes; exact chain review pending. Expected useful index 0 is an audit hypothesis, never sent to judge.",
+  "tasks": {
+    "Place the lemon on the green target area.": {
+      "stages": {
+        "blocked": {
+          "visible_condition": "The lemon remains between blocks and gripper access is obstructed.",
+          "languages": [
+            "Move the obstructing block away from the lemon",
+            "Pick up the lemon",
+            "Move the other block toward the lemon",
+            "Place the lemon on the green target"
+          ]
+        },
+        "accessible": {
+          "visible_condition": "The lemon is accessible on the table and not held.",
+          "languages": [
+            "Pick up the lemon",
+            "Place the lemon on the green target",
+            "Pick up the nearby block",
+            "Move the block back beside the lemon"
+          ]
+        },
+        "held": {
+          "visible_condition": "The lemon is held and not above the green target.",
+          "languages": [
+            "Carry the lemon above the green target",
+            "Put the lemon down beside the gap",
+            "Carry the lemon back toward the gap",
+            "Pick up the nearby block"
+          ]
+        },
+        "over_target": {
+          "visible_condition": "The held lemon is above the target but has not been released.",
+          "languages": [
+            "Place the lemon on the green target",
+            "Carry the lemon back toward the gap",
+            "Put the lemon down beside the target",
+            "Pick up the nearby block"
+          ]
+        }
+      }
+    },
+    "Retrieve the cube from the container and place it on the green target area.": {
+      "stages": {
+        "inside": {
+          "visible_condition": "The cube is still inside the deep container.",
+          "languages": [
+            "Tilt the container to release the cube",
+            "Pick up the cube",
+            "Place the cube on the green target",
+            "Move the container away from the target"
+          ]
+        },
+        "accessible": {
+          "visible_condition": "The cube is outside the container and not held.",
+          "languages": [
+            "Pick up the cube",
+            "Place the cube on the green target",
+            "Pick up the container",
+            "Put the container over the cube"
+          ]
+        },
+        "held": {
+          "visible_condition": "The cube is held and not above the green target.",
+          "languages": [
+            "Carry the cube above the green target",
+            "Return the cube to the container",
+            "Put the cube down beside the target",
+            "Pick up the container"
+          ]
+        },
+        "over_target": {
+          "visible_condition": "The held cube is above the target and not released.",
+          "languages": [
+            "Place the cube on the green target",
+            "Return the cube to the container",
+            "Carry the cube away from the target",
+            "Pick up the container"
+          ]
+        }
+      }
+    }
+  }
+}

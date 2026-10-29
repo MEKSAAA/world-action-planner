@@ -1,0 +1,31 @@
+{
+  "sim_root": "/home/junwenmiao/code/RoboWits-wap-eef",
+  "policy_python": "/data/mjw/world-action-planner/openpi-venv/bin/python",
+  "openpi_runtime": "/data/mjw/world-action-planner/openpi-runtime",
+  "policy_checkpoint": "/data/robowits-checkpoints/pi05_robowits_subgoal_eef/lemon_eef_b64/29999",
+  "wm_python": "/data/mjw/world-action-planner/wm-venv/bin/python",
+  "wm_checkpoint": "/data/mjw/world-action-planner/robowits-lemon/20261021/experiment/train/checkpoints/latest-step=2000.ckpt",
+  "ckpts": "/data/mjw/world-action-planner/ckpts/world_models",
+  "wan": "/data/mjw/world-action-planner/ckpts/Wan2.1-T2V-1.3B",
+  "urdf": "/home/junwenmiao/code/RoboWits/assets/hf_assets/marvin_bimanual/urdf/marvin_pika.urdf",
+  "eval_json": "/data/mjw/world-action-planner/eef-study/20261027/novel-scenes.json",
+  "vlm_socket": "/tmp/wap-amber-full-20261029.sock",
+  "max_steps": 1000,
+  "case": 0,
+  "seed": 202610270,
+  "out": "/data/mjw/world-action-planner/multigoal/NEW-RUN",
+  "policy_gpu": "0",
+  "wm_gpu": "0",
+  "task_id": "robowits/03-gap-retrieve-v0",
+  "mode": "selection",
+  "proposer": "gemini",
+  "judges": [
+    "gemini",
+    "qwen"
+  ],
+  "primary_judge": "gemini",
+  "num_subgoals": 4,
+  "samples_per_subgoal": 2,
+  "credential_file": "/home/junwenmiao/code/RoboWits-wap/.env",
+  "gemini_model": "gemini-3-flash-preview"
+}
