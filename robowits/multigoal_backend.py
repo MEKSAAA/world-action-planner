@@ -16,10 +16,16 @@ from .vlm_reward import generate
 
 class Backend:
     def __init__(self, name, *, socket=None, model='gemini-3-flash-preview',
-                 credential_file=None, key_env='RPAD_GEMINI_API_KEY'):
+                 credential_file=None, key_env='RPAD_GEMINI_API_KEY', thinking_level='low', qwen_thinking=False):
         if name not in ('gemini', 'qwen'):
             raise ValueError('Unknown backend')
         self.name, self.socket, self.model = name, socket, model
+        if thinking_level not in ('minimal','low','medium','high'):
+            raise ValueError('Unsupported Gemini thinking level')
+        self.thinking_level = thinking_level
+        if type(qwen_thinking) is not bool:
+            raise ValueError('qwen_thinking must be boolean')
+        self.qwen_thinking = qwen_thinking
         self.key = os.environ.get(key_env)
         if name == 'gemini' and not self.key and credential_file:
             # Read only the requested key; never execute/source shell content.
@@ -33,7 +39,7 @@ class Backend:
         if name == 'qwen' and socket is None:
             raise ValueError('Qwen socket is required')
 
-    def complete(self, prompt, images, out):
+    def complete(self, prompt, images, out, *, schema=None):
         out = Path(out)
         if self.name == 'qwen':
             # The existing local service belongs to an earlier experiment and
@@ -42,7 +48,8 @@ class Backend:
             connection_errors = []
             for attempt in range(19):
                 try:
-                    raw = generate(self.socket, prompt, images, out)
+                    raw = generate(self.socket, prompt, images, out,
+                        **({'options':{'enable_thinking':True}} if self.qwen_thinking else {}))
                 except (FileNotFoundError, ConnectionRefusedError, ConnectionResetError) as exc:
                     connection_errors.append({'attempt':attempt,'type':type(exc).__name__})
                     out.mkdir(parents=True, exist_ok=True)
@@ -51,11 +58,15 @@ class Backend:
                         raise
                     time.sleep(5)
                 else:
+                    if self.qwen_thinking and json.loads((out/'response.json').read_text()).get('thinking_enabled') is not True:
+                        raise RuntimeError('Local service did not acknowledge requested Qwen thinking mode')
                     return raw
         out.mkdir(parents=True, exist_ok=True)
         config = {'temperature': 1.0, 'maxOutputTokens': 8192,
                   'responseMimeType': 'application/json',
-                  'thinkingConfig': {'thinkingLevel': 'low'}}
+                  'thinkingConfig': {'thinkingLevel': self.thinking_level}}
+        if schema is not None:
+            config['responseJsonSchema'] = schema
         (out/'request.json').write_text(json.dumps({
             'backend': self.name, 'model': self.model, 'prompt': prompt,
             'images': [str(Path(p).resolve()) for p in images],
@@ -114,7 +125,7 @@ def strict_json(raw):
     return json.loads(text, object_pairs_hook=pairs, parse_constant=invalid)
 
 
-def validated_complete(backend, prompt, images, out, validator, attempts=3):
+def validated_complete(backend, prompt, images, out, validator, attempts=3, *, schema=None):
     """Retry malformed answers, retaining every raw response; never repair scores."""
     out = Path(out)
     validation_error = None
@@ -125,7 +136,7 @@ def validated_complete(backend, prompt, images, out, validator, attempts=3):
             'Return exactly ONE JSON object with the requested top-level key and fields. '
             'No bare array, markdown, repeated answer, or trailing text. '
             f'Validation error to correct: {validation_error}')
-        raw = backend.complete(prompt+reminder, images, folder)
+        raw = backend.complete(prompt+reminder, images, folder, **({'schema':schema} if schema else {}))
         try:
             result = validator(raw)
         except (ValueError, TypeError, KeyError) as exc:

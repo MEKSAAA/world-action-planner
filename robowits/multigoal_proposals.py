@@ -20,10 +20,26 @@ Every goal has exactly language, arm, anchor, offset. Do not invent invisible ob
 Return JSON only, with one key goals containing the requested list of goals.'''
 
 
+def goal_schema(count):
+    return {'type':'object','additionalProperties':False,'required':['goals'],
+        'properties':{'goals':{'type':'array','minItems':count if count is not None else 3,
+            'maxItems':count if count is not None else 5,
+            'items':{'type':'object','additionalProperties':False,
+                'required':['language','arm','anchor','offset'],'properties':{
+                    'language':{'type':'string'},
+                    'arm':{'type':'string','enum':['left','right','both','none']},
+                    'anchor':{'type':'array','minItems':2,'maxItems':2,
+                              'items':{'type':'number','minimum':0,'maximum':1}},
+                    'offset':{'type':'array','minItems':3,'maxItems':3,'items':{'type':'number'}}}}}}}
+
+
 def parse_goals(raw, count):
     from hier_policy.planner import parse_subgoal
     data = strict_json(raw)
-    if set(data) != {'goals'} or not isinstance(data['goals'], list) or len(data['goals']) != count:
+    if set(data) != {'goals'} or not isinstance(data['goals'], list):
+        raise ValueError('Wrong schema of subgoals')
+    size = len(data['goals'])
+    if (count is not None and size != count) or (count is None and not 3 <= size <= 5):
         raise ValueError('Wrong number or schema of subgoals')
     goals = []
     for row in data['goals']:
@@ -38,7 +54,7 @@ def parse_goals(raw, count):
         if goal.arm == 'none' and any((*goal.anchor, *goal.offset)):
             raise ValueError('Unconditioned goal must use zero coordinates')
         goals.append(goal)
-    if len({g.language.lower() for g in goals}) != count:
+    if len({g.language.lower() for g in goals}) != size:
         raise ValueError('Duplicate subgoal languages: propose distinct instructions with different '
                          'objects, prerequisites or approaches; changing only the arm field is insufficient')
     return goals
@@ -67,12 +83,17 @@ class Proposer:
             # Only observational conditions enter this request. Never pass audit
             # labels, preferred-goal indices or counterfactual simulator futures.
             visible_stages = {name: item['visible_condition'] for name, item in stages.items()}
-            raw = self.backend.complete('Classify the CURRENT visible scene. Task: '+env.task_description+
+            stage_prompt = ('Classify the CURRENT visible scene. Task: '+env.task_description+
                 '\nStages: '+json.dumps(visible_stages)+
-                '\nReturn only {"stage":"one listed stage name"}.', [image], out/'stage')
-            stage_data = strict_json(raw)
-            if set(stage_data) != {'stage'} or stage_data['stage'] not in stages:
-                raise ValueError('Invalid visual stage')
+                '\nReturn only {"stage":"one listed stage name"}.')
+            def parse_stage(raw):
+                data = strict_json(raw)
+                if set(data) != {'stage'} or data['stage'] not in stages:
+                    raise ValueError('Invalid visual stage')
+                return data
+            stage_data = validated_complete(self.backend,stage_prompt,[image],out/'stage',parse_stage,
+                schema={'type':'object','required':['stage'],'additionalProperties':False,
+                        'properties':{'stage':{'type':'string','enum':list(stages)}}})
             stage = stage_data['stage']
             languages = stages[stage]['languages']
             if len(languages) != self.count:
@@ -85,15 +106,17 @@ class Proposer:
                       json.dumps(languages)+'\n'+GROUNDING)
         else:
             languages = None
-            prompt = (f'Task: {env.task_description}\nPropose {self.count} distinct plausible next subgoals. '
+            prompt = (f'Task: {env.task_description}\nPropose 3 to 5 distinct plausible next subgoals, preferably {self.count}. '
                       'Consider different objects, prerequisites, or approaches, not synonymous descriptions. '
+                      'Three distinct choices are better than padding the list with synonyms. '
                       'Every candidate should be a sincere attempt to help. Do not deliberately inject errors.\n'+GROUNDING)
+        expected_count = self.count if self.manual else None
         goals = validated_complete(self.backend, prompt, [image], out/'grounded-goals',
-                                   lambda raw: parse_goals(raw, self.count))
+                                   lambda raw: parse_goals(raw, expected_count),schema=goal_schema(expected_count))
         if languages is not None and [g.language for g in goals] != languages:
             raise ValueError('Grounder changed manual candidate languages')
         if languages is None:
-            order = np.random.default_rng(decision_seed).permutation(self.count)
+            order = np.random.default_rng(decision_seed).permutation(len(goals))
             goals = [goals[i] for i in order]
         grounded = []
         for goal in goals:

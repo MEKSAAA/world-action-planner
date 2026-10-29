@@ -12,12 +12,16 @@ import numpy as np
 from PIL import Image, ImageDraw
 
 
-def generate(socket_path, prompt, images, out, *, examples=None):
+def generate(socket_path, prompt, images, out, *, examples=None, options=None):
     out = Path(out)
     out.mkdir(parents=True, exist_ok=True)
     request = {'prompt': prompt, 'images': [str(Path(p).resolve()) for p in images]}
     if examples is not None:
         request['examples'] = examples
+    if options is not None:
+        if set(options) != {'enable_thinking'} or type(options['enable_thinking']) is not bool:
+            raise ValueError('Unsupported local VLM request options')
+        request.update(options)
     (out/'request.json').write_text(json.dumps(request, indent=2))
     with socket.socket(socket.AF_UNIX, socket.SOCK_STREAM) as client:
         client.settimeout(300)

@@ -49,6 +49,13 @@ def main():
             current = pack(obs['pixels'])
             if hashlib.sha256(current.tobytes()).hexdigest() != decision['observation_sha256']:
                 raise ValueError('Audit RGB differs before branch')
+            if i == 0:
+                from .eef_loop import candidate_seeds
+                from .multigoal_pairing import reuse_bank
+                check = args.out/'paired-bank-check'
+                check.mkdir()
+                reuse_bank(args.run,args.decision,obs,
+                    candidate_seeds(protocol['seed'],args.decision,len(targets)),check)
             folder = args.out/f'candidate-{i}'
             folder.mkdir()
             frames, states, events = [current], [], []

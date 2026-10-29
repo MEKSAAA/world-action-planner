@@ -33,7 +33,9 @@ def backend(config, name):
     return Backend(name, socket=config.get('vlm_socket'),
         model=config.get('gemini_model', 'gemini-3-flash-preview'),
         credential_file=config.get('credential_file'),
-        key_env=config.get('key_env', 'RPAD_GEMINI_API_KEY'))
+        key_env=config.get('key_env', 'RPAD_GEMINI_API_KEY'),
+        thinking_level=config.get('gemini_thinking_level', 'low'),
+        qwen_thinking=config.get('qwen_thinking',False))
 
 
 def run(env, policy, wm, proxy, fk, config, out):
@@ -51,7 +53,8 @@ def run(env, policy, wm, proxy, fk, config, out):
         reference_decisions = json.loads((reference/'decisions.json').read_text())
         reference_trajectory = np.load(reference/'trajectory.npz')
     proposer = Proposer(backend(config, config['proposer']), config['num_subgoals'], config.get('manual'))
-    judges = {name: TaskValue(backend(config, name)) for name in config['judges']}
+    judges = {name: TaskValue(backend(config, name),candidate_text=config.get('value_candidate_text',True))
+              for name in config['judges']}
     history = deque(maxlen=180)
     actions, joints, decisions = [], [], []
     started = time.monotonic()
@@ -91,11 +94,11 @@ def run(env, policy, wm, proxy, fk, config, out):
                 index = len(decisions)
                 folder = out/f'decision-{index:04d}'
                 folder.mkdir()
-                seeds = candidate_seeds(config['seed'], index, config['num_subgoals']*config['samples_per_subgoal'])
                 if paired:
                     if index >= len(reference_decisions):
                         raise ValueError('Paired reference ended before unchanged prefix')
                     previous = reference_decisions[index]
+                    seeds = candidate_seeds(config['seed'],index,len(previous['candidate_map']))
                     if previous['step'] != env._step_count or previous['observation_sha256'] != hashlib.sha256(pack(obs['pixels']).tobytes()).hexdigest():
                         raise ValueError('Paired step or RGB diverged before alternative selection')
                     candidates, languages, metadata = reuse_bank(reference,index,obs,seeds,folder)
@@ -103,6 +106,7 @@ def run(env, policy, wm, proxy, fk, config, out):
                 else:
                     t0 = time.monotonic()
                     goals = proposer.propose(env, folder/'proposals', config['seed']+index)
+                    seeds = candidate_seeds(config['seed'],index,len(goals)*config['samples_per_subgoal'])
                     proposal_seconds = time.monotonic()-t0
                     candidates, languages, metadata = [], [], []
                     policy_seconds = 0.

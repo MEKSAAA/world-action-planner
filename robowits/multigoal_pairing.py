@@ -16,7 +16,8 @@ def validate_reference(protocol, reference):
     previous = json.loads((reference/'protocol.json').read_text())
     for key in ('task_id','seed','case','eval_json','policy_checkpoint','openpi_runtime',
                 'num_subgoals','samples_per_subgoal','proposer','judges','primary_judge',
-                'gemini_model','manual_sha256','max_steps','sim_commit'):
+                'gemini_model','gemini_thinking_level','qwen_thinking','value_candidate_text',
+                'manual_sha256','max_steps','sim_commit'):
         if protocol.get(key) != previous.get(key):
             raise ValueError(f'Paired reference differs: {key}')
     for name in ('multigoal_proposals.py','multigoal_backend.py','multigoal_value.py',

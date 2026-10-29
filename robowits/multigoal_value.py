@@ -28,9 +28,22 @@ Return JSON only: {"candidates":[{"id":0,"valid":true,"score":0.0,
 Include exactly the requested candidate IDs; no extra fields.'''
 
 
+def reward_schema(count):
+    return {'type':'object','additionalProperties':False,'required':['candidates'],
+        'properties':{'candidates':{'type':'array','minItems':count,'maxItems':count,
+            'items':{'type':'object','additionalProperties':False,
+                'required':['id','valid','score','reason'],'properties':{
+                    'id':{'type':'integer','minimum':0,'maximum':count-1},
+                    'valid':{'type':'boolean'},'score':{'type':'number','minimum':0,'maximum':1},
+                    'reason':{'type':'string'}}}}}}
+
+
 class TaskValue:
-    def __init__(self, backend):
+    def __init__(self, backend, *, candidate_text=True):
         self.backend = backend
+        if type(candidate_text) is not bool:
+            raise ValueError('candidate_text must be boolean')
+        self.candidate_text = candidate_text
 
     def judge(self, current, predictions, task, languages, out, valid_future_frames=6):
         if len(languages) != len(predictions):
@@ -39,11 +52,13 @@ class TaskValue:
         for i, (prediction, language) in enumerate(zip(predictions, languages)):
             folder = Path(out)/f'candidate-{i}'
             images = view_strips(current, prediction, folder, valid_future_frames)
-            prompt = (RUBRIC+f'\nOverall task: {task}\nCandidate instruction: {language}\n'
+            instruction = f'Candidate instruction: {language}\n' if self.candidate_text else ''
+            prompt = (RUBRIC+f'\nOverall task: {task}\n'+instruction+
                 'Judge only candidate id 0. Three images show ego, right wrist, left wrist. '
                 'Within each image CURRENT is followed by timestamped imagined future frames. '
                 'Compare each camera over time. These are model predictions, not observations.')
-            parsed = validated_complete(self.backend, prompt, images, folder/'vlm', lambda raw: parse_rewards(raw,1))
+            parsed = validated_complete(self.backend, prompt, images, folder/'vlm',
+                lambda raw: parse_rewards(raw,1),schema=reward_schema(1))
             scores.append(dict(parsed[0], id=i))
         return scores
 
@@ -66,7 +81,8 @@ class TaskValue:
                   'id (integer), valid (boolean), score (0 to 1), reason (visible supporting evidence). '
                   'Exact structure: {"candidates":[{"id":0,"valid":true,"score":0.5,"reason":"specific evidence"}, ...]}. '
                   'The image contains duplicate ego panels above, right wrist below-left and left wrist below-right.')
-        scores = validated_complete(self.backend, prompt, [image], out/'vlm', lambda raw: parse_rewards(raw,len(unique)))
+        scores = validated_complete(self.backend, prompt, [image], out/'vlm',
+            lambda raw: parse_rewards(raw,len(unique)),schema=reward_schema(len(unique)))
         return [dict(scores[unique.index(s)], id=i) for i,s in enumerate(languages)]
 
 

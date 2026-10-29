@@ -20,6 +20,9 @@ def test_goals_reject_bad_grounding_and_duplicates():
     rows = [{'language': f'Pick up object {i}', 'arm': 'right', 'anchor': [.5,.5],
              'offset': [0,0,.02]} for i in range(4)]
     assert len(parse_goals(json.dumps({'goals':rows}),4)) == 4
+    assert len(parse_goals(json.dumps({'goals':rows[:3]}),None)) == 3
+    with pytest.raises(ValueError):
+        parse_goals(json.dumps({'goals':rows[:2]}),None)
     rows[0]['anchor'][0] = True
     with pytest.raises(ValueError):
         parse_goals(json.dumps({'goals':rows}),4)
@@ -39,7 +42,7 @@ def test_manual_draft_cannot_execute(tmp_path):
 class Recorder:
     def __init__(self):
         self.calls=[]
-    def complete(self,prompt,images,out):
+    def complete(self,prompt,images,out,**kwargs):
         self.calls.append((prompt,images))
         n = 2 if 'Estimate appropriateness' in prompt else 1
         return json.dumps({'candidates':[{'id':i,'score':.1+i*.5,'valid':True,
@@ -67,6 +70,15 @@ def test_scoring_never_exposes_padded_future(tmp_path):
         # Ignore label band: all queried picture pixels must remain black.
         assert np.asarray(Image.open(p))[24:].max()==0
     assert 'OVERALL task' in recorder.calls[0][0]
+
+
+def test_blind_value_omits_candidate_instruction(tmp_path):
+    recorder=Recorder()
+    current=np.zeros((448,448,3),np.uint8)
+    TaskValue(recorder,candidate_text=False).judge(current,[np.repeat(current[None],6,axis=0)],
+        'Place lemon',['Lift the unusual purple distractor'],tmp_path)
+    assert 'unusual purple' not in recorder.calls[0][0]
+    assert 'Candidate instruction:' not in recorder.calls[0][0]
 
 
 def test_all_invalid_stops_selection():

@@ -35,8 +35,11 @@ def main():
                     messages.extend([{'role':'user','content':example_content},
                                      {'role':'assistant','content':example['answer']}])
                 messages.append({'role':'user','content':content})
+                thinking = request.get('enable_thinking', False)
+                if type(thinking) is not bool:
+                    raise ValueError('enable_thinking must be boolean')
                 inputs = processor.apply_chat_template(messages, tokenize=True,
-                         add_generation_prompt=True, enable_thinking=False, return_dict=True, return_tensors='pt').to('cuda:0')
+                         add_generation_prompt=True, enable_thinking=thinking, return_dict=True, return_tensors='pt').to('cuda:0')
                 started = time.monotonic()
                 with torch.inference_mode():
                     result = model.generate(**inputs, max_new_tokens=args.max_new_tokens, do_sample=False)
@@ -44,6 +47,7 @@ def main():
                 response = {'raw': processor.decode(tokens, skip_special_tokens=True), 'model': str(args.model),
                             'seconds': time.monotonic()-started, 'output_tokens': len(tokens),
                             'example_count': len(request.get('examples', [])),
+                            'thinking_enabled': thinking,
                             'reached_token_limit': len(tokens) >= args.max_new_tokens}
             except Exception as error:
                 response = {'error': f'{type(error).__name__}: {error}'}
