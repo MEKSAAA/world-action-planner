@@ -130,3 +130,5 @@ Gemini 接口依据 [Google GenerateContent 文档](https://ai.google.dev/api/ge
 - 新的 `robowits.multigoal_episode_report` 导出 Markdown 时间线，只统计已经执行的选择；运行中或技术中断的 `success=false` 不算任务失败。终局还需核对动作轨迹长度；物理重放单独检查关节、接触和成功标志。
 - 新的 `multigoal_rescore --reuse-recorded-primary` 避免重新询问主模型造成评分漂移后替换真实在线选择。只允许原始在线 WM 候选目录，不允许替换预测或更改评分配置后复用原分数。
 - 检查：49 passed, 1 skipped；运行代码仍固定在 `7caca41`，π0.5 训练与权重未修改。
+
+首个正式同池交叉评分已经完成（Qwen case 1，第 0 次选择）：Qwen 为 `[0,0,0]`，保持无 WM 候选 2；Gemini 为 `[0.3,0.3,0]`，保持其离线无 WM 候选 1。两者各自均未因 WM 改选，不能把二者选择差异当作 WM 的作用。Gemini 对前两项的解释明确说静止、无进展，却给 0.3；说明评分与理由矛盾在新初态上仍出现。原始证据见 `formal-crossscore/review.md`。
