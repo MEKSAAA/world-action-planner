@@ -17,6 +17,14 @@ Initial distance was 35.0 cm; the closest points during the entire episodes were
 
 Gemini's WM loop switched from candidate 0 to 1 at the first decision; Qwen has not yet diverged from its control. Neither has a terminal WM outcome yet. The no-WM judge sees RGB and candidate language without explicit arm/anchor coordinates, whereas predictions convey action geometry, so any future gain needs to distinguish geometry from dynamics. Proposal/manual-stage inference currently uses ego RGB while value scoring uses multiple views. Historical sections below record earlier phases, not necessarily current status. The earlier successful single-subgoal case-0 pair is reported separately.
 
+## Fixed step-250 cross-score and physical check
+
+At Qwen decision 25, the online Qwen judge scored all three predictions zero and retained its no-WM choice 2. Offline Gemini switched from its no-WM choice 0 to choice 2, with predicted-outcome scores 0 / 0.30 / 0.34. Gemini nevertheless described candidate 1 as stationary with no progress, contradicting its nonzero score. Agreement on the final index does not establish agreement about the predictions or a WM benefit.
+
+All three saved action branches were replayed independently from native step 250, with zero prefix joint error and identical current RGB. The selected candidate 2 also exactly matched the ten online executed joint states. Lemon displacement was 5.07 / 5.93 / 8.07 mm; planar target distance increased by 2.66 / 3.74 / 5.41 mm. Candidate 2 instructed a right-arm grasp, but its ten-step lemon contacts involved only the left-side `Link8_L`, and maximum height increase was just 0.0041 mm. This short segment does not demonstrate a completed right-arm pickup. Contact alone is not a stable grasp, and local target-distance regression alone does not prove a poor long-term action.
+
+[Cross-scores](/data/mjw/world-action-planner/multigoal/20261029/formal-crossscore/review.md), [actual / condition / WM videos for all candidates](/data/mjw/world-action-planner/multigoal/20261029/formal-qwen-step250-physical/review/review.md), and [contact and online-trajectory checks](/data/mjw/world-action-planner/multigoal/20261029/formal-qwen-step250-physical/physical-check.json). Physical branches are post-hoc diagnostics and never enter online scoring.
+
 ## Agreed design
 
 The user chose plausible errors in timing or object choice, with one expected useful candidate, and independent Gemini/Qwen proposer-and-judge pipelines plus cross-scoring of identical predictions.

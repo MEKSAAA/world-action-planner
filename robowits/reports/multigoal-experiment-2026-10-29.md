@@ -21,6 +21,14 @@ lemon case 1，完全相同的初始状态：
 
 下方各阶段记录保留实验演变；较早的“进行中”描述不是当前状态。旧 case 0 单子目标完整成功配对单独见[该实验报告](amber-wm-qwen-2026-10-29.md)，不混作本矩阵结果。
 
+## 固定第 250 步的交叉评分与物理核查
+
+Qwen 的第 25 次决策中，在线 Qwen 对三组 WM 预测均给 0 分，保留无 WM 候选 2；离线 Gemini 从无 WM 的候选 0 改选候选 2，预测分数为 0 / 0.30 / 0.34。Gemini 对候选 1 的理由却是“静止、没有进展”，与其非零分矛盾。两者最终选项一致，不代表对预测的判断一致，也不构成 WM 增益证据。
+
+三条保存动作均从原生第 250 步独立回放：前缀关节误差为 0、当前 RGB 完全匹配；候选 2 的十步关节轨迹与实际在线执行误差为 0。lemon 位移分别为 5.07 / 5.93 / 8.07 mm，平面目标距离分别增加 2.66 / 3.74 / 5.41 mm。被选中的候选文字为“右臂抓 lemon”，但该分支十步接触记录只有左侧 `Link8_L` 与 lemon 接触，最大高度增加仅 0.0041 mm。这些记录没有显示该短片段完成右臂抓起；接触本身不等于稳定抓握，短期远离目标也不能单独判定长期动作错误。
+
+[交叉评分原始分数](/data/mjw/world-action-planner/multigoal/20261029/formal-crossscore/review.md) · [三个候选的真实执行 / 条件 / WM 视频](/data/mjw/world-action-planner/multigoal/20261029/formal-qwen-step250-physical/review/review.md) · [接触和在线轨迹核查](/data/mjw/world-action-planner/multigoal/20261029/formal-qwen-step250-physical/physical-check.json)。物理分支仅用于事后诊断，未进入在线评分。
+
 ## 已确认的设置
 
 - 人工候选以动作合理、但时机或对象错误为主，每轮保留一个预期合适的候选。
