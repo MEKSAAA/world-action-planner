@@ -22,6 +22,8 @@ def export(root):
     if not same_state(read(baseline/'initial.json'), read(selection/'initial.json')):
         raise ValueError('Different initial states')
     protocol = read(selection/'protocol.json')
+    has_subgoal_planner = 'policy_checkpoint' in protocol and 'subgoal_steps' in protocol
+    baseline_label = 'Amber + Qwen subgoals' if has_subgoal_planner else 'Policy baseline'
     decisions = read(selection/'decisions.json')
     audit = read(selection/'contact-replay.json')['summary']
     if audit['success'] != results[1]['success'] or audit['steps'] != results[1]['steps']:
@@ -51,7 +53,7 @@ def export(root):
         with imageio.get_writer(root/'execution-comparison.mp4',fps=1/.0333,codec='libx264') as writer:
             for step in range(max(r['steps'] for r in results)+1):
                 canvas=Image.new('RGB',(896,480),'white');draw=ImageDraw.Draw(canvas)
-                for i,(v,r,label) in enumerate(zip(readers,results,['Policy baseline','WM + Qwen selection'])):
+                for i,(v,r,label) in enumerate(zip(readers,results,[baseline_label,'WM + Qwen selection'])):
                     ended=' | ended; last frame held' if step>r['steps'] else ''
                     canvas.paste(Image.fromarray(v.get_data(min(step,r['steps']))),(448*i,32))
                     draw.text((448*i+4,4),f'{label} | step {min(step,r["steps"])}{ended}',fill='black')
@@ -61,7 +63,7 @@ def export(root):
     lines=['# 完整 π0.5 + WM + Qwen 闭环结果','',
            '本回合已结束。成功判定来自模拟器；Qwen 分数不等于任务成功。两组是同一起始状态的一次配对，不是总体成功率估计。','',
            '| 组别 | 执行步数 | 原生成功 |','|---|---:|---|',
-           f'| 纯策略 | {results[0]["steps"]} | {results[0]["success"]} |',
+           f'| {"策略 + Qwen 子目标（无 WM 筛选）" if has_subgoal_planner else "纯策略"} | {results[0]["steps"]} | {results[0]["success"]} |',
            f'| WM + Qwen | {results[1]["steps"]} | {results[1]["success"]} |','',
            f'共 {len(decisions)} 轮选择，选择候选 1 共 {len(switches)} 次；首次切换步数：{summary["first_changed_step"]}。',
            f'共同执行区间动作完全相同：{action_equal}；最大关节差：{joint_diff:.6g}。','',
@@ -70,6 +72,8 @@ def export(root):
            f'原生结束标志：terminated={audit["terminated"]}，truncated={audit["truncated"]}；诊断：{audit["failure_stage"]}。','',
            '[完整逐轮评分及理由](selection/decisions.json) · [物理重放诊断](selection/contact-replay.json) · [运行配置](selection/protocol.json)','',
            '## 候选视频审核','']
+    if has_subgoal_planner:
+        lines[2:2] = ['Amber 策略使用 Qwen 提供的子目标文字和 RGB-D 提升的空间目标；对照也包含这个子目标规划器。策略动作窗口为 10 步，评分只看前 0.30 秒，不能与整任务输入、50 步动作窗口的 checkpoint 视作只换权重的消融。','']
     # Show the first and last decisions, plus up to three actual action changes.
     indices=sorted(set([0,len(decisions)-1]+switches[:3])) if decisions else []
     horizon=protocol['judged_future_frames']

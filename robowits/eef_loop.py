@@ -25,6 +25,7 @@ from .geometry import Marvin, pack
 from .openpi_client import OpenPIClient
 from .eef_actions import EEFProxy, chunk_targets, control_action
 from .vlm_reward import VLMReward, IndependentVLMReward, generate
+from .illustrated_value import IllustratedValueReward
 
 
 def candidate_seeds(seed, decision, count):
@@ -287,10 +288,13 @@ def main():
     p.add_argument('--reuse-baseline-candidate-zero', action='store_true', help='Pair on baseline draw after exact input/prompt/seed checks; retain fresh draws for audit')
     p.add_argument('--reuse-imagination-from', type=Path, help='Completed control trial; reuse exact matching WM inputs and judgments with verified provenance')
     p.add_argument('--mode', choices=['baseline','selection'], default='selection')
-    p.add_argument('--reward-mode', choices=['joint','independent'], default='joint')
+    p.add_argument('--reward-mode', choices=['joint','independent','illustrated'], default='joint')
+    p.add_argument('--value-examples', type=Path, help='Visual-example manifest for illustrated Qwen scoring')
     p.add_argument('--selection-margin', type=float, default=0., help='Require this score improvement over valid candidate 0')
     p.add_argument('--force-candidate-zero', action='store_true')
     args = p.parse_args()
+    if args.reward_mode == 'illustrated' and args.value_examples is None:
+        p.error('Illustrated scoring requires --value-examples')
     if args.stop_after_steps is not None and args.stop_after_steps < 1:
         p.error('Review step limit must be positive')
     if args.recover_from is not None and (args.reuse_imagination_from is not None or not args.force_candidate_zero):
@@ -306,11 +310,14 @@ def main():
     try:
         protocol = {k: str(v) if isinstance(v, Path) else v for k, v in vars(args).items()}
         protocol.update(sim_commit=subprocess.check_output(['git','rev-parse','HEAD'],cwd=args.sim_root,text=True).strip(),
-                        action_mode='EE_DELTA', policy_action_horizon=10, wm_future_frames=20,
+                        action_mode='EE_DELTA', control_mode='EE_DELTA', observation_mode='JOINT',
+                        policy_action_horizon=10, wm_future_frames=20,
                         judged_future_frames=6, terminal_pose_padding_steps=20,
                         policy_training='none; checkpoint and normalization read-only',
                         source_sha256={name:file_sha256(Path(__file__).parent/name) for name in
-                                       ('eef_loop.py','eef_actions.py','vlm_reward.py','openpi_worker.py','closed_loop_worker.py')},
+                                       (('eef_loop.py','eef_actions.py','vlm_reward.py','openpi_worker.py','closed_loop_worker.py')
+                                        + (('illustrated_value.py',) if args.reward_mode == 'illustrated' else ()))},
+                        examples_sha256=file_sha256(args.value_examples) if args.value_examples else None,
                         wm_sha256=file_sha256(args.wm_checkpoint))
         write_json(args.out/'protocol.json', protocol)
         if args.reference_run is not None:
@@ -326,6 +333,8 @@ def main():
                         'policy_checkpoint','execute_steps','subgoal_steps','max_steps','selection_margin'):
                 if protocol[key] != source_protocol[key]:
                     raise ValueError(f'Imagination reuse provenance differs: {key}')
+            if protocol['examples_sha256'] != source_protocol.get('examples_sha256'):
+                raise ValueError('Imagination reuse examples differ')
             for name, digest in protocol['source_sha256'].items():
                 # Recovery adds review/resume orchestration only. Action math,
                 # model inference and reward prompt must remain byte-identical.
@@ -362,7 +371,9 @@ def main():
         policy = OpenPIClient(args.policy_python, args.openpi_runtime, args.policy_checkpoint,
                               args.out/'policy-queue', args.policy_gpu)
         wm = Worker(args) if args.mode != 'baseline' else None
-        judge = (IndependentVLMReward if args.reward_mode == 'independent' else VLMReward)(args.vlm_socket)
+        judge = (IllustratedValueReward(args.vlm_socket, args.value_examples)
+                 if args.reward_mode == 'illustrated' else
+                 (IndependentVLMReward if args.reward_mode == 'independent' else VLMReward)(args.vlm_socket))
         result = run_episode(env, policy, wm, judge, proxy, fk, args)
         write_json(args.out/'status.json', result)
     except BaseException:

@@ -1,0 +1,48 @@
+# Amber lemon π0.5：重新测试完整 WM + Qwen 闭环
+
+**当前已确认：Amber + Qwen 子目标的对照回合在第 514 步成功。** 模拟器原生 `success=true`、`terminated=true`、`truncated=false`；重放同一动作后仍成功，最大关节误差为 0。完整 WM + Qwen 动作选择组已启动，结果尚未完成，以下不是 WM 收益结论。
+
+[成功对照完整视频](/data/mjw/world-action-planner/amber-release/20261029/full-wm-qwen-case0/baseline/execution.mp4) · [关键帧](/data/mjw/world-action-planner/amber-release/20261029/full-wm-qwen-case0/baseline/keyframes.png) · [对照结果](/data/mjw/world-action-planner/amber-release/20261029/full-wm-qwen-case0/baseline/result.json) · [物理复核](/data/mjw/world-action-planner/amber-release/20261029/full-wm-qwen-case0/baseline/contact-replay.json)
+
+## 实际使用的设置
+
+| 项目 | 设置 |
+|---|---|
+| checkpoint | `/data/robowits-checkpoints/pi05_robowits_subgoal_eef/lemon_eef_b64/29999` |
+| 推理实现 | 既有 OpenPI/JAX 环境，原 `create_trained_policy` 和 checkpoint 归一化 |
+| 仿真 | Genesis 1.3.1；RoboWits `db6acf3` 只读 worktree |
+| 初始状态 | 固定新布局 case 0、seed 202610270，与 Chunru 实验同一布局 |
+| 策略输入 | 多相机图像、机器人状态、子目标文字、手臂标记、RGB-D 提升的 3D 目标 |
+| 子目标规划 | 本地 Qwen3.5-9B，每 50 步更新；沿用原生 planner 的 prompt / 解析 / 深度提升 |
+| 动作 | 10 × 14 维 EEF 增量；使用 Amber 原生坐标变换与执行函数 |
+| 执行频率 | 每轮执行 10 步，然后重新观察并规划动作 |
+| WM | 既有 lemon 微调 2,000 步 checkpoint，不重新训练 |
+| 候选 / 评分 | 两个候选；本地 Qwen，沿用上轮图片示例、图像变化量提示、独立评分 |
+| 选择规则 | 有效候选 1 比有效候选 0 高出超过 0.10 才切换，同分保留 0 |
+| 结束 | 原生成功或 1,000 步；没有 50 步暂停 |
+
+没有训练 π0.5，也没有修改 Amber 的训练代码、配置、数据或权重。没有调用 Claude API。
+
+## 与 Chunru 的比较边界
+
+Amber 需要显式子目标和 3D 位置，因此这里的对照是 **Amber + Qwen 子目标规划器，不含 WM 动作筛选**；不是只有完整任务文本的策略。两组在动作分叉前复用同一份经观测核对的子目标和候选 0，并检查执行轨迹一致。
+
+Amber 的动作窗口约 0.333 秒，而 WM 接口需要一秒。机器人代理在前 10 步之后保持最后目标姿态，用于满足接口；评分器仅查看前 **6 个预测帧 / 0.30 秒**，排除填充部分。但填充仍可能影响联合生成的视频，不能把它当成真正的一秒动作计划。
+
+因此与 Chunru 的整任务输入、50 步 chunk、完整一秒有效预测相比，策略条件、动作表示和评分窗口均不同，不能当作只换权重的严格消融。之前 Amber 的旧实验还使用过不同规划器和 5 步执行窗口；本次成功不能被解释为同配置结果突然反转。
+
+为观察换用 Amber 后的闭环行为，本次保留了上轮 Qwen 的评分示例，**没有把“移除示例”的诊断版本同时混入**。已知评分误判仍是解释限制，最终成功只由模拟器判定。
+
+## 当前对照结果
+
+- 第 514 步原生成功，52 次策略查询；约 17.1 秒仿真时间。
+- 最大 lemon 抬升 64.7 mm，181 帧有效指尖接触；重放关节最大误差 0。
+- 原运行墙钟约 64.9 秒，不含初始化；这是一个固定初始状态的单次成功，不能当成总体成功率。
+
+## 完整闭环与自动收尾
+
+[实时 Markdown 进度](/data/mjw/world-action-planner/amber-release/20261029/full-wm-qwen-case0/progress.md) · [状态 JSON](/data/mjw/world-action-planner/amber-release/20261029/full-wm-qwen-case0/job-status.json) · [结果报告，结束后自动更新](/data/mjw/world-action-planner/amber-release/20261029/full-wm-qwen-case0/report.md)
+
+后台运行目录：`/data/mjw/world-action-planner/amber-release/20261029/full-wm-qwen-case0`。每轮保存动作候选、子目标、WM 条件与预测、Qwen 原始请求 / 回复、评分和执行选择。正常结束后自动物理重放、导出完整对比视频与 Markdown；若出错则明确记录错误，不当作完成。
+
+代码只修改 WAP 的推理入口，使 EEF 模型可使用现有 illustrated Qwen reward，并在报告中标明子目标规划器。新增测试验证 0.30 秒之后的填充图像既不会显示给评分器，也不会进入图像变化量提示。相关测试：35 passed、1 skipped；原生策略已实际加载并完成成功回合。

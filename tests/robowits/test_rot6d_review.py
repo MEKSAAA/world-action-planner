@@ -38,3 +38,21 @@ def test_rot6d_pairing_requires_full_input_task_and_seed_match(tmp_path):
     with pytest.raises(RuntimeError,match='task or seeds'):paired_candidates(source,current,fresh)
     np.savez(current/'policy-input.npz',state=np.ones(20),ego=np.zeros((4,4,3),np.uint8))
     with pytest.raises(RuntimeError,match='inputs differ'):paired_candidates(source,current,fresh)
+
+
+def test_illustrated_eef_reward_excludes_padded_images_and_motion_measurements(tmp_path, monkeypatch):
+    import robowits.illustrated_value as module
+    current=np.zeros((448,448,3),np.uint8)
+    future=np.repeat(current[None],20,axis=0)
+    future[6:]=255
+    manifest=tmp_path/'examples.json'
+    manifest.write_text(json.dumps({'examples':[]}))
+    def generate(socket,prompt,images,out,*,examples):
+        for path in images:
+            assert not np.asarray(Image.open(path))[24:].any()
+        measurements=json.loads(prompt.split('QUERY image measurements (computed from supplied images only): ')[1].split('\n')[0])
+        assert all(x['mean_absolute_rgb_change']==0 and x['changed_pixel_percent']==0 for x in measurements.values())
+        return json.dumps({'candidates':[dict(id=0,valid=True,score=0.,reason='Static query')]})
+    monkeypatch.setattr(module,'generate',generate)
+    result=module.IllustratedValueReward('unused',manifest).judge(current,[future],'task','subgoal',tmp_path/'reward',valid_future_frames=6)
+    assert result[0]['score']==0
