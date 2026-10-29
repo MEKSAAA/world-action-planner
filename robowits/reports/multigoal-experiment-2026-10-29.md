@@ -25,11 +25,11 @@ lemon case 1，完全相同的初始状态：
 
 ## cube 全部候选被拒绝：中止记录与独立修订协议
 
-原版 Gemini cube 对照在第 750 步停止：当时三个相机视图均看不到容器和方块，评分器将三个候选全部标为无效，`best()` 抛出异常。该记录为 `status=error, success=null`，不是原生成功或 1,000 步终局；对应 WM 配对没有启动。[原始回合核查](/data/mjw/world-action-planner/multigoal/20261029/formal-review/cube-gemini-interrupted/review.md)。Qwen cube 和两条 lemon WM 仍按原冻结版本运行。
+原版 Gemini cube 对照在第 750 步停止：当时三个相机视图均看不到容器和方块，评分器将三个候选全部标为无效，`best()` 抛出异常。Qwen cube 也在第 130 步因全拒绝停止。两条记录均为 `status=error, success=null`，不是原生成功或 1,000 步终局；对应 WM 配对均没有启动。[Gemini 原始回合核查](/data/mjw/world-action-planner/multigoal/20261029/formal-review/cube-gemini-interrupted/review.md) · [Qwen 原始回合核查](/data/mjw/world-action-planner/multigoal/20261029/formal-review/cube-qwen-interrupted/review.md)。两条 lemon WM 仍按原冻结版本运行。
 
 单独修订协议增加显式弃选：无 WM 对照全部候选无效时，`selected=null`，保持本轮开始时的实测末端位姿 10 步，再重新观察和提议。WM 组仍可选择被 WM 评分器判为有效的候选；两位判断均无有效候选时才保持。保持动作单独计数，不标作策略采样或 WM 批准。默认旧行为仍为报错；新配对需显式启用 `all_invalid_action=hold`，且两组设置和源码哈希必须一致。修订协议不能与旧版中止记录拼接成一次完整回合。
 
-验证：16 项相关测试通过；在真实 cube 模拟器里注入全拒绝评分，两种模式均完成 1,000 步、100 次明确弃选，配对动作与全部关节状态逐项完全相等。模型调用在此验证中使用桩，**仅验证控制逻辑，不计入模型效果**。[验证证据](/data/mjw/world-action-planner/multigoal/20261029/abstention-native-integration/verification.json)。独立 Gemini cube 修订配对将使用新的冻结 worktree，并按 GPU 空闲情况排队。
+验证：16 项相关测试通过；在真实 cube 模拟器里注入全拒绝评分，两种模式均完成 1,000 步、100 次明确弃选，配对动作与全部关节状态逐项完全相等。模型调用在此验证中使用桩，**仅验证控制逻辑，不计入模型效果**。[验证证据](/data/mjw/world-action-planner/multigoal/20261029/abstention-native-integration/verification.json)。Gemini、Qwen 的 cube 修订配对均使用独立冻结 worktree `world-action-planner-multigoal-hold-eval`（`9c1ac29`），输出在 `formal-cube-case1-hold`，按 Gemini 对照→WM、Qwen 对照→WM 顺序运行，第一条对照已启动。对应固定采样交叉评分和终局物理回放监控已启动，与原版输出分开。
 
 ## 固定第 250 步的交叉评分与物理核查
 
