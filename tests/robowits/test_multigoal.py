@@ -7,6 +7,7 @@ import pytest
 from robowits.multigoal_backend import Backend, strict_json, validated_complete
 from robowits.multigoal_proposals import parse_goals, Proposer
 from robowits.multigoal_value import TaskValue, best, select_outcome
+from robowits.multigoal_loop import execution_targets
 
 
 def test_json_rejects_duplicate_and_nonfinite():
@@ -117,6 +118,25 @@ def test_wm_tie_and_invalid_are_explicit_control_fallbacks():
     assert select_outcome(rejected,control)==(1,'all_wm_invalid_fallback_to_no_wm')
     flat[0]['score']=.3
     assert select_outcome(flat,control)==(0,'higher_valid_wm_score')
+
+
+def test_explicit_abstention_never_executes_a_rejected_candidate():
+    rejected = [{'id': i, 'valid': False, 'score': 0.99} for i in range(3)]
+    with pytest.raises(RuntimeError):
+        best(rejected)
+    assert best(rejected, allow_abstention=True) is None
+    assert select_outcome(rejected, rejected, allow_abstention=True) == (
+        None, 'all_judges_invalid_hold')
+    accepted = [{'id': 2, 'valid': True, 'score': .2}]
+    assert select_outcome(accepted, rejected, allow_abstention=True) == (
+        2, 'higher_valid_wm_score')
+    current = np.arange(14, dtype=np.float32) / 100
+    candidates = np.ones((3, 10, 14), dtype=np.float32)
+    held = execution_targets(current, candidates, None)
+    assert held.shape == (10, 14)
+    assert np.array_equal(held, np.repeat(current[None], 10, axis=0))
+    assert not np.array_equal(held, candidates[0])
+    assert np.array_equal(execution_targets(current, candidates, 2), candidates[2])
 
 
 def test_paired_bank_rejects_changed_inputs_and_seeds(tmp_path,monkeypatch):

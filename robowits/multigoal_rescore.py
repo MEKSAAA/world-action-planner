@@ -28,7 +28,7 @@ def main():
         if args.kind!='wm' or args.videos.resolve()!=(args.run/f'decision-{args.decision:04d}').resolve():
             raise ValueError('Recorded scores require the original online WM decision directory')
         original=json.loads((args.run/'protocol.json').read_text())
-        for key in ('gemini_model','gemini_thinking_level','qwen_thinking','value_candidate_text'):
+        for key in ('gemini_model','gemini_thinking_level','qwen_thinking','value_candidate_text','all_invalid_action'):
             if config.get(key)!=original.get(key):
                 raise ValueError(f'Cannot reuse primary scores after changing {key}')
         primary=config['primary_judge']
@@ -74,7 +74,8 @@ def main():
             judge=TaskValue(backend(config,name),candidate_text=config.get('value_candidate_text',True))
             no_wm=judge.without_wm(current,task,languages,args.out/name/'no-wm')
             values=judge.judge(current,predictions,task,languages,args.out/name/'outcomes',valid_future_frames=6)
-        selected,reason=select_outcome(values,no_wm)
+        selected,reason=select_outcome(values,no_wm,
+            allow_abstention=config.get('all_invalid_action','error')=='hold')
         if recorded and selected!=decision['selected']:
             raise ValueError('Recorded primary scores do not reproduce the online choice')
         rows[name]={'no_wm':no_wm,'outcomes':values,'selected':selected,'choice_reason':reason,

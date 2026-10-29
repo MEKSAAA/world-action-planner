@@ -134,7 +134,8 @@ def export(run, out):
                 changes.append(i)
         distance = np.load(run/f'decision-{i:04d}'/'pairwise-position-distance-m.npy')
         rows.append({'decision': i, 'step': decision['step'], 'selected': selected,
-                     'control': control, 'language': decision['candidate_map'][selected]['goal']['language'],
+                     'control': control, 'language': decision['candidate_map'][selected]['goal']['language']
+                        if selected is not None else 'HOLD (explicit abstention)',
                      'scores': [s['score'] if s['valid'] else None for s in scores],
                      'max_mean_position_distance_mm': float(distance.max()*1000),
                      'paired': decision['paired_candidate_bank'], 'reason': decision['choice_reason']})
@@ -142,6 +143,7 @@ def export(run, out):
         'status': result['status'], 'process_live': live(status.get('pid')),
         'native_success': outcome, 'executed_steps': steps, 'executed_decisions': len(executed),
         'recorded_decisions': len(decisions), 'changed_from_same_state_control': len(changes),
+        'abstained_decisions': sum(d['selected'] is None for d in executed),
         'first_changed_step': executed[changes[0]]['step'] if changes else None,
         'score_diagnostics': dict(reasons), 'scored_candidates': len(flat),
         'invalid_candidates': sum(not s['valid'] for s in flat),
@@ -168,6 +170,7 @@ def export(run, out):
         '单个初态不能估计总体成功率。运行中的 success=false 不计作任务失败。', '',
         f'模型：{protocol["proposer"]} 提议，{primary} 评分；模式：`{protocol["mode"]}`。',
         f'已执行 {len(executed)} 次选择；与同状态无 WM 选择不同 {len(changes)} 次。',
+        f'明确弃选并保持末端位姿 {summary["abstained_decisions"]} 次；不计作策略候选或 WM 批准。',
         '分叉后的“无 WM 选择”只是当前状态的对照判断，不是另一条完整轨迹的同一步。', '',
         f'评分异常计数：`{dict(reasons)}`；无效候选 {summary["invalid_candidates"]}/{len(flat)}。',
         f'已记录推理耗时（秒）：`{summary["timing_seconds"]}`。不含所有初始化和评分时间；不能当作端到端总耗时。', '',

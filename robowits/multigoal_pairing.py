@@ -14,13 +14,15 @@ def validate_reference(protocol, reference):
     if result['status'] != 'complete':
         raise ValueError('Full paired comparison requires a completed reference episode')
     previous = json.loads((reference/'protocol.json').read_text())
+    if protocol.get('all_invalid_action', 'error') != previous.get('all_invalid_action', 'error'):
+        raise ValueError('Paired reference differs: all_invalid_action')
     for key in ('task_id','seed','case','eval_json','policy_checkpoint','openpi_runtime',
                 'num_subgoals','samples_per_subgoal','proposer','judges','primary_judge',
                 'gemini_model','gemini_thinking_level','qwen_thinking','value_candidate_text',
                 'manual_sha256','max_steps','sim_commit'):
         if protocol.get(key) != previous.get(key):
             raise ValueError(f'Paired reference differs: {key}')
-    for name in ('multigoal_proposals.py','multigoal_backend.py','multigoal_value.py',
+    for name in ('multigoal_loop.py','multigoal_proposals.py','multigoal_backend.py','multigoal_value.py',
                  'eef_actions.py','openpi_worker.py'):
         if protocol['source_sha256'][name] != previous['source_sha256'][name]:
             raise ValueError(f'Paired source differs: {name}; use the same frozen code')

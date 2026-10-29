@@ -38,6 +38,13 @@ def backend(config, name):
         qwen_thinking=config.get('qwen_thinking',False))
 
 
+def execution_targets(current, targets, chosen):
+    """Explicit abstention holds the measured pose; never relabel it a policy draw."""
+    if chosen is None:
+        return np.repeat(np.asarray(current, dtype=np.float32)[None], 10, axis=0)
+    return targets[chosen]
+
+
 def run(env, policy, wm, proxy, fk, config, out):
     import imageio.v2 as imageio
     from hier_policy.rollout import policy_observation
@@ -159,9 +166,16 @@ def run(env, policy, wm, proxy, fk, config, out):
                         scores[name] = judge.judge(current, predictions, env.task_description,
                             languages, folder/f'wm-{name}', valid_future_frames=6)
                 primary = config['primary_judge']
-                chosen, choice_reason = (select_outcome(scores[primary], no_wm[primary]) if mode == 'selection'
-                                         else (best(no_wm[primary]), 'no_wm_control'))
+                allow_abstention = config.get('all_invalid_action', 'error') == 'hold'
+                chosen, choice_reason = (select_outcome(scores[primary], no_wm[primary],
+                    allow_abstention=allow_abstention) if mode == 'selection'
+                    else (best(no_wm[primary], allow_abstention=allow_abstention), 'no_wm_control'))
+                if chosen is None and mode == 'without_wm':
+                    choice_reason = 'all_no_wm_invalid_hold'
+                executed_targets = execution_targets(obs['agent_pos_ee'], targets, chosen)
+                np.save(folder/'executed-targets.npy', executed_targets)
                 decision = {'step': env._step_count, 'selected': chosen, 'candidate_map': metadata,
+                    'abstained': chosen is None,
                     'choice_reason': choice_reason, 'paired_candidate_bank': paired,
                     'no_wm': no_wm, 'wm': scores, 'proposal_seconds': proposal_seconds,
                     'policy_seconds': policy_seconds, 'proxy_seconds': proxy_seconds, 'wm_seconds': wm_seconds,
@@ -170,7 +184,7 @@ def run(env, policy, wm, proxy, fk, config, out):
                 write_json(out/'decisions.json', decisions)
                 if paired and chosen != previous['selected']:
                     paired = False
-                for target in targets[chosen]:
+                for target in executed_targets:
                     action = control_action(obs['agent_pos_ee'], target)
                     obs, _, terminated, truncated, info = env.step(action)
                     actions.append(action)
@@ -186,7 +200,8 @@ def run(env, policy, wm, proxy, fk, config, out):
                 write_json(out/'status.json', dict(result, pid=os.getpid(), decisions=len(decisions)))
                 np.savez_compressed(out/'trajectory.npz', actions=np.asarray(actions), joints=np.asarray(joints))
                 print(json.dumps({'step': env._step_count, 'selected': chosen,
-                                  'goal': languages[chosen], 'success': result['success']}), flush=True)
+                                  'goal': languages[chosen] if chosen is not None else 'HOLD (abstention)',
+                                  'success': result['success']}), flush=True)
                 if terminated or truncated:
                     break
                 if config.get('diagnostic_decisions') and len(decisions) >= config['diagnostic_decisions']:
@@ -212,6 +227,8 @@ def main():
     config = json.loads(args.config.read_text())
     if config['mode'] not in ('selection', 'without_wm'):
         raise ValueError('Invalid selection mode')
+    if config.get('all_invalid_action', 'error') not in ('error', 'hold'):
+        raise ValueError('all_invalid_action must be error or hold')
     if not 3 <= config['num_subgoals'] <= 5 or not 1 <= config['samples_per_subgoal'] <= 4:
         raise ValueError('Invalid candidate counts')
     if config['primary_judge'] not in config['judges'] or len(set(config['judges'])) != len(config['judges']):
@@ -243,6 +260,7 @@ def main():
         protocol = dict(config, action_mode='EE_DELTA', observation_mode='JOINT', execute_steps=10,
             wm_future_frames=20, judged_future_frames=6, terminal_pose_padding_steps=20,
             wm_choice_rule='prefer no-WM choice on a maximum-score tie; all-invalid fallback to no-WM choice',
+            all_invalid_action=config.get('all_invalid_action', 'error'),
             policy_training='none; checkpoint and normalization read-only',
             sim_commit=subprocess.check_output(['git','rev-parse','HEAD'],cwd=sim_root,text=True).strip(),
             source_sha256={n: file_sha256(Path(__file__).with_name(n)) for n in (

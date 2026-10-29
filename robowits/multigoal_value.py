@@ -86,23 +86,27 @@ class TaskValue:
         return [dict(scores[unique.index(s)], id=i) for i,s in enumerate(languages)]
 
 
-def best(scores):
+def best(scores, *, allow_abstention=False):
     valid = [s for s in scores if s['valid']]
     if not valid:
+        if allow_abstention:
+            return None
         raise RuntimeError('Every candidate was rejected; no action executed')
     # Candidate list is shuffled before sampling; ties favor the first saved draw.
     return max(valid, key=lambda s: s['score'])['id']
 
 
-def select_outcome(scores, no_wm_scores):
+def select_outcome(scores, no_wm_scores, *, allow_abstention=False):
     """Keep the no-WM choice when WM supplies no discriminating valid evidence.
 
     A complete rejection is logged as fallback, never reported as WM approval.
     Among tied maximum WM scores, prefer the no-WM choice if it is in the tie.
     """
-    control = best(no_wm_scores)
+    control = best(no_wm_scores, allow_abstention=allow_abstention)
     valid = [s for s in scores if s['valid']]
     if not valid:
+        if control is None:
+            return None, 'all_judges_invalid_hold'
         return control, 'all_wm_invalid_fallback_to_no_wm'
     maximum = max(s['score'] for s in valid)
     tied = [s['id'] for s in valid if abs(s['score']-maximum) <= 1e-12]

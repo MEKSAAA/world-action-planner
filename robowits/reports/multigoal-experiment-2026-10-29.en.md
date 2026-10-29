@@ -19,6 +19,14 @@ The Gemini control recorded 201 API responses including retries: 1,089,902 provi
 
 Gemini's WM loop switched from candidate 0 to 1 at the first decision; Qwen has not yet diverged from its control. Neither has a terminal WM outcome yet. The no-WM judge sees RGB and candidate language without explicit arm/anchor coordinates, whereas predictions convey action geometry, so any future gain needs to distinguish geometry from dynamics. Proposal/manual-stage inference currently uses ego RGB while value scoring uses multiple views. Historical sections below record earlier phases, not necessarily current status. The earlier successful single-subgoal case-0 pair is reported separately.
 
+## Cube rejection stop and separate amended protocol
+
+The original Gemini cube control stopped at step 750: the cube and container were absent from all camera views, the judge rejected all three candidates, and `best()` raised. This is `status=error, success=null`, not a native success or a 1,000-step endpoint. Its paired WM run did not start. [Interrupted-episode review](/data/mjw/world-action-planner/multigoal/20261029/formal-review/cube-gemini-interrupted/review.md). Qwen cube and both lemon WM runs continue with the original frozen code.
+
+A separate amendment supports explicit abstention. With `all_invalid_action=hold`, a no-WM control rejecting every candidate records `selected=null`, holds the measured start-of-chunk end-effector pose for ten steps, then observes and proposes again. The WM arm can still execute a WM-valid candidate; it holds only if both judgements provide no valid candidate. Holds are counted separately and never labeled policy samples or WM approvals. The default remains an error, paired settings and source hashes must match, and the interrupted old trajectory is not spliced into an amended full episode.
+
+Validation: 16 relevant tests passed. Native cube simulation with injected all-rejected scores reached 1,000 steps and 100 explicit abstentions in both modes, with exactly identical paired actions and joint states. Models were stubbed for this test: it verifies control flow, **not model performance**. [Evidence](/data/mjw/world-action-planner/multigoal/20261029/abstention-native-integration/verification.json). The separate amended Gemini cube pair uses a new frozen worktree and waits for GPU capacity.
+
 ## Fixed step-250 cross-score and physical check
 
 At Qwen decision 25, the online Qwen judge scored all three predictions zero and retained its no-WM choice 2. Offline Gemini switched from its no-WM choice 0 to choice 2, with predicted-outcome scores 0 / 0.30 / 0.34. Gemini nevertheless described candidate 1 as stationary with no progress, contradicting its nonzero score. Agreement on the final index does not establish agreement about the predictions or a WM benefit.
