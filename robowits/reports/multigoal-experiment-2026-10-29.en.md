@@ -1,12 +1,27 @@
 # Multi-subgoal Amber π0.5 + finetuned WM experiment
 
-2026-10-29. Implementation and initial diagnostics are in progress. No new full-episode multi-subgoal result is available yet.
+2026-10-29. Both formal lemon case-1 no-WM controls are complete; the paired WM loops are running. The manual version remains pending review.
+
+## Completed no-WM controls
+
+Both started from exactly identical native initial states and reached 1,000 steps without success (`terminated=false`, `truncated=true`). Each passed 100 decision-image checks and every joint-state check with zero error.
+
+|Proposer/judge|Maximum object lift|Final planar distance to target|Episode wall time|
+|---|---:|---:|---:|
+|Gemini, no WM|39.2 mm|48.0 cm|67.7 min|
+|Qwen, no WM|41.7 mm|56.2 cm|26.3 min|
+
+Initial distance was 35.0 cm; the closest points during the entire episodes were still about 34.9 / 34.8 cm. Both contacted and briefly lifted the lemon without transporting it to the target. One episode per setting cannot estimate population success rates. Timing excludes startup, shares GPUs, and compares Gemini high thinking with nonthinking Qwen, so it is not an isolated model-efficiency benchmark.
+
+[Actual trajectories, complete videos, and decision records](/data/mjw/world-action-planner/multigoal/20261029/control-comparison/review.md). Qwen has documented language/anchor mismatches. Gemini continues proposing transport/handover after the object becomes nearly stationary (less than 0.126 mm movement after step 700). These observations motivate separate stage, grounding, and planning analyses; they do not prove the policy entirely ignores spatial conditioning.
+
+Gemini's WM loop switched from candidate 0 to 1 at the first decision; Qwen has not yet diverged from its control. Neither has a terminal WM outcome yet. The no-WM judge sees RGB and candidate language without explicit arm/anchor coordinates, whereas predictions convey action geometry, so any future gain needs to distinguish geometry from dynamics. Proposal/manual-stage inference currently uses ego RGB while value scoring uses multiple views. Historical sections below record earlier phases, not necessarily current status. The earlier successful single-subgoal case-0 pair is reported separately.
 
 ## Agreed design
 
 The user chose plausible errors in timing or object choice, with one expected useful candidate, and independent Gemini/Qwen proposer-and-judge pipelines plus cross-scoring of identical predictions.
 
-Each decision proposes four grounded subgoals. Frozen Amber π0.5 samples two action chunks per subgoal. The finetuned lemon WM imagines all eight candidates; a task-level judge chooses one to execute. Each chunk covers ten native steps, approximately 0.333 seconds. Only the first six predicted frames are scored; the rest of the fixed one-second WM horizon uses terminal-pose padding. Observe and repeat until native success or 1,000 steps.
+Initial diagnostics used four subgoals with two action samples each. Formal natural-proposal episodes allow 3–5 subgoals (prefer three), with one frozen Amber π0.5 action sample per subgoal; the finetuned lemon WM imagines all candidates and a task-level judge chooses one. The prepared manual version uses four fixed candidate instructions per stage with one sample each. Each chunk covers ten native steps, approximately 0.333 seconds. Only the first six predicted frames are scored; the rest of the fixed one-second WM horizon uses terminal-pose padding. Observe and repeat until native success or 1,000 steps.
 
 Two proposal sources are implemented: natural VLM proposals and a human-authored stage-dependent catalogue. The latter remains a draft pending user review. Candidate order is shuffled and expected-correct labels never enter scoring prompts. Stage and grounding use current RGB/RGB-D, not simulator object states.
 
@@ -98,3 +113,5 @@ A separate [Chinese manual-chain review](manual-subgoals-review-2026-10-29.md) l
 The earlier Amber case-0 single-subgoal loop first switched at step 310. Qwen assigned 0 / 0.6 to the two predictions, claiming only the second established a new grasp. Exact shared-prefix physical branches both had finger contact for all 10 steps and no lift; lemon displacement was 5.875 / 5.774 mm, with only 0.106 mm between final positions. This local evidence does not support a large grasp-quality difference. Videos are in `amber-release/20261029/full-wm-qwen-case0/switch-310-review/review.md` under the experiment root. This older illustrated-example configuration is reported separately from the new multi-subgoal text-example pairs.
 
 The earlier single-subgoal case-0 pair is now complete: both succeeded, at 514 steps without WM and 526 with WM. Both passed zero-error physical replay; three WM switches did not reduce simulator steps. Recorded wall times were 64.9 s / 120.5 min, excluding startup and sharing GPUs with other experiments. See the [separate English result](amber-wm-qwen-2026-10-29.en.md). This does not replace the ongoing two-task, two-model multi-subgoal matrix. Resource cleanup enabled the cube Gemini control to start; the replacement Qwen service has already supported further online scoring.
+
+Gemini's first formal WM switch (candidate 0 → 1 on the shared bank) now has actual branches for all three candidates. Lemon displacement over ten steps was about 0.00359 mm in each, and the blocks barely moved. The selected branch exactly matches online executed joints. This does not verify an immediate object-interaction benefit, but arm-approach value may emerge later. [Actual/condition/prediction videos](/data/mjw/world-action-planner/multigoal/20261029/formal-first-switch-gemini/review/review.md).
