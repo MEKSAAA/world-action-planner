@@ -24,13 +24,16 @@ def main():
     parser.add_argument('--out', type=Path, required=True)
     parser.add_argument('--allow-diagnostic', action='store_true',
                         help='Verify a completed short diagnostic, without counting it as task success/failure')
+    parser.add_argument('--allow-interrupted', action='store_true',
+                        help='Verify only the saved prefix of an error run; native outcome remains unknown')
     args = parser.parse_args()
     protocol = json.loads((args.run/'protocol.json').read_text())
     result = json.loads((args.run/'result.json').read_text())
     outcome = terminal_outcome(result, protocol['max_steps'])
     diagnostic = result['status'] == 'diagnostic_complete' and args.allow_diagnostic
-    if outcome is None and not diagnostic:
-        raise ValueError('Only terminal episodes or explicitly allowed completed diagnostics can be replayed')
+    interrupted = result['status'] == 'error' and args.allow_interrupted
+    if outcome is None and not (diagnostic or interrupted):
+        raise ValueError('Nonterminal replay requires an explicitly allowed diagnostic or interrupted run')
     target = OBJECTS[protocol['task_id']]
     sim = Path(protocol['sim_root'])
     commit = subprocess.check_output(['git', 'rev-parse', 'HEAD'], cwd=sim, text=True).strip()
@@ -77,11 +80,12 @@ def main():
             events.append({'step': step+1, 'contacts': contacts(env), 'success': bool(info['is_success'])})
             if (terminated or truncated) and step+1 != len(actions):
                 raise ValueError('Replay reached an earlier native endpoint')
-        expected_success = result['success_at_stop'] if diagnostic else outcome
-        if bool(info['is_success']) != expected_success:
-            raise ValueError('Replay native success differs')
-        if bool(terminated) != result['terminated'] or bool(truncated) != result['truncated']:
-            raise ValueError('Replay endpoint flags differ')
+        if not interrupted:
+            expected_success = result['success_at_stop'] if diagnostic else outcome
+            if bool(info['is_success']) != expected_success:
+                raise ValueError('Replay native success differs')
+            if bool(terminated) != result['terminated'] or bool(truncated) != result['truncated']:
+                raise ValueError('Replay endpoint flags differ')
         positions = np.array([[s['objects'][name] for name in object_names] for s in states])
         orientations = np.array([[s['orientations'][name] for name in object_names] for s in states])
         item = positions[:, object_names.index(target)]
@@ -90,8 +94,10 @@ def main():
         contact_counts = {name: sum(name in e['contacts'] for e in events) for name in object_names}
         finger_frames = sum(bool(FINGERS.intersection(e['contacts'].get(target, {}).get('robot_links', [])))
                             for e in events)
-        summary = dict(status='diagnostic_verified' if diagnostic else 'complete_verified',
+        summary = dict(status=('interrupted_prefix_verified' if interrupted else
+                               'diagnostic_verified' if diagnostic else 'complete_verified'),
             native_success=outcome, success_at_stop=bool(info['is_success']), steps=len(actions),
+            endpoint_verified_against_recorded_result=not interrupted,
             task_object=target, terminated=bool(terminated), truncated=bool(truncated),
             max_joint_error=max_error, decision_images_verified=checked_images,
             finger_object_contact_frames=finger_frames, robot_object_contact_frames=contact_counts,

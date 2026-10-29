@@ -25,7 +25,9 @@ lemon case 1，完全相同的初始状态：
 
 ## cube 全部候选被拒绝：中止记录与独立修订协议
 
-原版 Gemini cube 对照在第 750 步停止：当时三个相机视图均看不到容器和方块，评分器将三个候选全部标为无效，`best()` 抛出异常。Qwen cube 也在第 130 步因全拒绝停止。两条记录均为 `status=error, success=null`，不是原生成功或 1,000 步终局；对应 WM 配对均没有启动。[Gemini 原始回合核查](/data/mjw/world-action-planner/multigoal/20261029/formal-review/cube-gemini-interrupted/review.md) · [Qwen 原始回合核查](/data/mjw/world-action-planner/multigoal/20261029/formal-review/cube-qwen-interrupted/review.md)。两条 lemon WM 仍按原冻结版本运行。
+原版 Gemini cube 对照在第 750 步停止：评分器认为容器和方块不可见，将三个候选全部标为无效，`best()` 抛出异常。Qwen cube 也在第 130 步因全拒绝停止。两条记录均为 `status=error, success=null`，不是原生成功或 1,000 步终局；对应 WM 配对均没有启动。[Gemini 原始回合核查](/data/mjw/world-action-planner/multigoal/20261029/formal-review/cube-gemini-interrupted/review.md) · [Qwen 原始回合核查](/data/mjw/world-action-planner/multigoal/20261029/formal-review/cube-qwen-interrupted/review.md)。两条 lemon WM 仍按原冻结版本运行。
+
+中止前缀的物理重放进一步确认：**物体没有掉出场景**。Gemini / Qwen 的 cube 最终位移仅 36.95 / 19.14 mm，容器位移 35.41 / 17.50 mm；cube 高度始终约 0.782–0.787 m。机器人分别有 474 / 92 步接触容器，却都没有直接接触 cube。逐步关节误差为 0，75 / 13 个已执行决策画面均通过哈希检查。评分器的“物体不可见/不在场景中”应与物理消失区分，遮挡与识别错误的贡献仍需看视频。新增弃选逻辑只解决异常中止，没有自动解决这些感知和取物问题。[真实物体轨迹与核查](/data/mjw/world-action-planner/multigoal/20261029/formal-cube-interrupted-replay/review.md)。
 
 单独修订协议增加显式弃选：无 WM 对照全部候选无效时，`selected=null`，保持本轮开始时的实测末端位姿 10 步，再重新观察和提议。WM 组仍可选择被 WM 评分器判为有效的候选；两位判断均无有效候选时才保持。保持动作单独计数，不标作策略采样或 WM 批准。默认旧行为仍为报错；新配对需显式启用 `all_invalid_action=hold`，且两组设置和源码哈希必须一致。修订协议不能与旧版中止记录拼接成一次完整回合。
 
