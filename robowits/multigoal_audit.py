@@ -8,8 +8,8 @@ import sys
 import imageio.v2 as imageio
 import numpy as np
 
-from .closed_loop import snapshot, same_state, state16, write_json
-from .eef_actions import control_action
+from .closed_loop import snapshot, same_state, state16, write_json, file_sha256
+from .eef_actions import control_action, chunk_targets
 from .geometry import pack
 from .replay_contacts import contacts
 
@@ -19,6 +19,10 @@ def main():
     parser.add_argument('--run', type=Path, required=True)
     parser.add_argument('--out', type=Path, required=True)
     parser.add_argument('--decision', type=int, default=0)
+    parser.add_argument('--legacy-eef', action='store_true',
+                        help='Audit an existing single-subgoal lemon EEF run using its recorded targets')
+    parser.add_argument('--trajectory', type=Path,
+                        help='Alternative recorded prefix; initial state, joints, and branch RGB must match')
     args = parser.parse_args()
     protocol = json.loads((args.run/'protocol.json').read_text())
     decisions = json.loads((args.run/'decisions.json').read_text())
@@ -26,13 +30,30 @@ def main():
     sim = Path(protocol['sim_root'])
     sys.path[:0] = [str(sim), str(sim/'third_party/lerobot/src')]
     import gs_gym
-    env = gs_gym.get_task_class(protocol['task_id'])(
+    if args.legacy_eef and (protocol.get('control_mode') != 'EE_DELTA' or protocol.get('execute_steps') != 10):
+        raise ValueError('Legacy mode requires the recorded 10-step EEF action protocol')
+    task_id = 'robowits/03-gap-retrieve-v0' if args.legacy_eef else protocol['task_id']
+    env = gs_gym.get_task_class(task_id)(
         control_mode='EE_DELTA', observation_mode='JOINT', max_episode_steps=protocol['max_steps'],
         genesis_backend='cpu', device='cpu', show_viewer=False, camera_type='rasterizer',
         eval_dataset_json=protocol.get('eval_json'))
     args.out.mkdir(parents=True, exist_ok=False)
-    trajectory = np.load(args.run/'trajectory.npz')
-    targets = np.load(args.run/f'decision-{args.decision:04d}/targets.npy')
+    trajectory_path = args.trajectory or args.run/'trajectory.npz'
+    write_json(args.out/'protocol.json', {'source_run':str(args.run), 'decision':args.decision,
+        'legacy_eef':args.legacy_eef, 'task_id':task_id,
+        'source_protocol_sha256':file_sha256(args.run/'protocol.json'),
+        'trajectory_source':str(trajectory_path), 'trajectory_sha256':file_sha256(trajectory_path),
+        'scope':'post-hoc actual candidate branches; no future oracle in online selection'})
+    # A live source may append another decision while the audit replays its past.
+    # Hold an immutable local snapshot rather than rereading a growing ZIP file.
+    with np.load(trajectory_path) as recorded:
+        trajectory = {key: recorded[key].copy() for key in ('actions', 'joints')}
+    if len(trajectory['actions']) < decision['step']:
+        raise ValueError('Recorded trajectory does not cover the required prefix')
+    source = args.run/f'decision-{args.decision:04d}'
+    bank = np.load(source/'candidates.npy')
+    targets = (np.stack([np.load(source/f'candidate-{i}'/'targets.npy') for i in range(len(bank))])
+               if args.legacy_eef else np.load(source/'targets.npy'))
     rows = []
     try:
         for i, chunk in enumerate(targets):
@@ -49,7 +70,11 @@ def main():
             current = pack(obs['pixels'])
             if hashlib.sha256(current.tobytes()).hexdigest() != decision['observation_sha256']:
                 raise ValueError('Audit RGB differs before branch')
-            if i == 0:
+            if args.legacy_eef:
+                reconstructed = chunk_targets(obs['agent_pos_ee'], bank[i])
+                if not np.array_equal(reconstructed, chunk):
+                    raise ValueError('Recorded EEF targets differ from sampled actions at the replayed state')
+            elif i == 0:
                 from .eef_loop import candidate_seeds
                 from .multigoal_pairing import reuse_bank
                 check = args.out/'paired-bank-check'
@@ -77,7 +102,7 @@ def main():
             np.save(folder/'native-states.npy', states)
             imageio.imwrite(folder/'current.png', current)
             summary = {'candidate': i, 'selected': i == decision['selected'],
-                'language': decision['candidate_map'][i]['goal']['language'],
+                'language': decision['subgoal'] if args.legacy_eef else decision['candidate_map'][i]['goal']['language'],
                 'prefix_joint_error': prefix_error, 'steps': len(states),
                 'native_success': bool(info['is_success']),
                 'object_displacement_m': {k: float(np.linalg.norm(np.asarray(v)-initial['objects'][k]))

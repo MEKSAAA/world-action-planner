@@ -24,12 +24,15 @@ def main():
     for flag in ('run','wm','audit','out'):
         p.add_argument('--'+flag,type=Path,required=True)
     p.add_argument('--decision',type=int,default=0)
+    p.add_argument('--legacy-eef',action='store_true',
+                   help='Use the recorded Qwen scores from a single-subgoal lemon EEF decision')
     args=p.parse_args();args.out.mkdir(parents=True,exist_ok=False)
     protocol=json.loads((args.run/'protocol.json').read_text())
     decision=json.loads((args.run/'decisions.json').read_text())[args.decision]
-    scores=json.loads((args.wm/'scores.json').read_text())
+    scores=({'qwen':decision['scores']} if args.legacy_eef else json.loads((args.wm/'scores.json').read_text()))
     audit=json.loads((args.audit/'summary.json').read_text())
-    object_name='lemon' if '03-gap-retrieve' in protocol['task_id'] else 'cube'
+    task_id='robowits/03-gap-retrieve-v0' if args.legacy_eef else protocol['task_id']
+    object_name='lemon' if '03-gap-retrieve' in task_id else 'cube'
     rows=[]
     with imageio.get_writer(args.out/'all-candidates.mp4',fps=5,codec='libx264') as combined:
         for row in audit:
@@ -76,10 +79,10 @@ def main():
                 for frame in frames:video.append_data(frame)
     write_json(args.out/'metrics.json',rows)
     lines=['# 固定候选池诊断：真实执行 / 骨架条件 / WM 预测','',
-        f'任务：`{protocol["task_id"]}`；开始于原生第 {decision["step"]} 步。', '',
+        f'任务：`{task_id}`；开始于原生第 {decision["step"]} 步。', '',
         '[全部候选慢放视频](all-candidates.mp4)。每个候选单独从相同场景回放，三个面板依次为真实模拟器、机器人条件、WM。', '',
         '视频只展示被评分的 6 帧，5 fps 慢放；对应实际原生帧偏移 2/3/5/6/8/9。表中物体位移包含完整 10 步，两个时间范围相差最后一个控制步。', '',
-        '这是局部诊断，不是 8 次独立任务试验；物体靠近目标也不必然意味着动作更好，例如清障或抓起可能先增加距离。', '',
+        '这是局部诊断，不是独立的完整任务试验；物体靠近目标也不必然意味着动作更好，例如清障或抓起可能先增加距离。', '',
         '|候选|子目标|10 步物体位移 mm|平面目标距离减少 mm|Gemini|Qwen|视频|',
         '|---:|---|---:|---:|---:|---:|---|']
     for r in rows:

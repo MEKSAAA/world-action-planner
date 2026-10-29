@@ -144,3 +144,9 @@ Gemini 接口依据 [Google GenerateContent 文档](https://ai.google.dev/api/ge
 这些检查提高结果的可复查性，不改变任务成功率，也不解决 VLM 定位或评分可靠性问题。
 
 人工版本的具体候选已整理为独立[中文审核页](manual-subgoals-review-2026-10-29.md)，包括两任务的阶段、四个候选、可达性歧义及如何运行。`manual-prepared/` 已准备两任务 × 两模型 × 有无 WM 的 8 份配置；审核后的候选文件故意保持不存在，没有启动监督进程、模型调用或回合。当前 `review_status` 仍为 `draft`。
+
+## 旧单子目标参照：首次改选的真实后果
+
+旧版 Amber case 0 的单子目标闭环首次在第 310 步改选。Qwen 对两个预测给 0 / 0.6，声称只有第二个候选新建立抓握。两分支从共同历史精确重放后，都有 10 帧指尖接触且未抬升，lemon 位移为 5.875 / 5.774 mm，最终位置只差 0.106 mm。该局部结果不支持明显的抓取收益差异。
+
+视频位于 `/data/mjw/world-action-planner/amber-release/20261029/full-wm-qwen-case0/switch-310-review/review.md`。这是独立的旧单子目标/图片示例设置，不混入新多子目标/文字示例配对。诊断入口支持显式 `--legacy-eef` 和共同历史来源，严格验证当前画面及动作目标。
