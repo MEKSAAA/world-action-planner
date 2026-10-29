@@ -41,6 +41,8 @@ Qwen 的第 25 次决策中，在线 Qwen 对三组 WM 预测均给 0 分，保�
 
 [交叉评分原始分数](/data/mjw/world-action-planner/multigoal/20261029/formal-crossscore/review.md) · [三个候选的真实执行 / 条件 / WM 视频](/data/mjw/world-action-planner/multigoal/20261029/formal-qwen-step250-physical/review/review.md) · [接触和在线轨迹核查](/data/mjw/world-action-planner/multigoal/20261029/formal-qwen-step250-physical/physical-check.json)。物理分支仅用于事后诊断，未进入在线评分。
 
+Gemini 自己的第 250 步候选池也完成了交叉评分及物理分支核查。两者无 WM 时都选 2；在线 Gemini 看预测后以 0.42 / 0.20 / 0.30 分改选 0，离线 Qwen 全零、保留 2。三条真实分支的 lemon 位移为 5.10 / 4.96 / 5.73 mm，最大抬升仅 0.236 / 0.312 / 0.382 mm；全部只记录到左侧 `Link8_L` 接触，不能据此认定稳定抓握。改选候选 0 相对原候选 2 的目标距离缩短优势仅约 0.16 mm，挡板位移也仅约 3–5 mm。前缀及选中分支与在线轨迹均零误差；这些局部结果不足以证明改选提高任务表现。[Gemini 第 250 步真实 / 条件 / WM 视频](/data/mjw/world-action-planner/multigoal/20261029/formal-gemini-step250-physical/review/review.md)。两组第 250 步诊断来自各自已经分叉的轨迹，不是同一个场景状态。
+
 ## 已确认的设置
 
 - 人工候选以动作合理、但时机或对象错误为主，每轮保留一个预期合适的候选。

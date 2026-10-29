@@ -37,6 +37,8 @@ All three saved action branches were replayed independently from native step 250
 
 [Cross-scores](/data/mjw/world-action-planner/multigoal/20261029/formal-crossscore/review.md), [actual / condition / WM videos for all candidates](/data/mjw/world-action-planner/multigoal/20261029/formal-qwen-step250-physical/review/review.md), and [contact and online-trajectory checks](/data/mjw/world-action-planner/multigoal/20261029/formal-qwen-step250-physical/physical-check.json). Physical branches are post-hoc diagnostics and never enter online scoring.
 
+Gemini's own step-250 bank also has completed cross-scores and physical branches. Both judges chose 2 without WM; online Gemini switched to 0 with scores 0.42 / 0.20 / 0.30, while offline Qwen gave all zeros and retained 2. Actual lemon displacement was 5.10 / 4.96 / 5.73 mm and maximum lift only 0.236 / 0.312 / 0.382 mm. All branches recorded only left `Link8_L` contact, which does not establish a stable grasp. Selected candidate 0 reduced target distance only about 0.16 mm more than original candidate 2; block displacements were also only about 3–5 mm. Prefix and selected-branch joints exactly matched online execution. These local results do not establish a task-performance gain. [Gemini step-250 actual / condition / WM videos](/data/mjw/world-action-planner/multigoal/20261029/formal-gemini-step250-physical/review/review.md). The two providers' step-250 banks come from already-diverged trajectories, not the same scene state.
+
 ## Agreed design
 
 The user chose plausible errors in timing or object choice, with one expected useful candidate, and independent Gemini/Qwen proposer-and-judge pipelines plus cross-scoring of identical predictions.
