@@ -142,3 +142,5 @@ Gemini 接口依据 [Google GenerateContent 文档](https://ai.google.dev/api/ge
 - 后台核查队列监视两任务、两模型、有无 WM 的八个正式回合；仅在每回合原生结束后启动重放。汇总：`/data/mjw/world-action-planner/multigoal/20261029/formal-native-replay/review.md`。
 
 这些检查提高结果的可复查性，不改变任务成功率，也不解决 VLM 定位或评分可靠性问题。
+
+人工版本的具体候选已整理为独立[中文审核页](manual-subgoals-review-2026-10-29.md)，包括两任务的阶段、四个候选、可达性歧义及如何运行。`manual-prepared/` 已准备两任务 × 两模型 × 有无 WM 的 8 份配置；审核后的候选文件故意保持不存在，没有启动监督进程、模型调用或回合。当前 `review_status` 仍为 `draft`。
