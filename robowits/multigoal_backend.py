@@ -50,7 +50,8 @@ class Backend:
                 try:
                     raw = generate(self.socket, prompt, images, out,
                         **({'options':{'enable_thinking':True}} if self.qwen_thinking else {}))
-                except (FileNotFoundError, ConnectionRefusedError, ConnectionResetError) as exc:
+                except (FileNotFoundError, ConnectionRefusedError, ConnectionResetError,
+                        BrokenPipeError, json.JSONDecodeError) as exc:
                     connection_errors.append({'attempt':attempt,'type':type(exc).__name__})
                     out.mkdir(parents=True, exist_ok=True)
                     (out/'connection-retries.json').write_text(json.dumps(connection_errors,indent=2))
