@@ -150,3 +150,5 @@ Gemini 接口依据 [Google GenerateContent 文档](https://ai.google.dev/api/ge
 旧版 Amber case 0 的单子目标闭环首次在第 310 步改选。Qwen 对两个预测给 0 / 0.6，声称只有第二个候选新建立抓握。两分支从共同历史精确重放后，都有 10 帧指尖接触且未抬升，lemon 位移为 5.875 / 5.774 mm，最终位置只差 0.106 mm。该局部结果不支持明显的抓取收益差异。
 
 视频位于 `/data/mjw/world-action-planner/amber-release/20261029/full-wm-qwen-case0/switch-310-review/review.md`。这是独立的旧单子目标/图片示例设置，不混入新多子目标/文字示例配对。诊断入口支持显式 `--legacy-eef` 和共同历史来源，严格验证当前画面及动作目标。
+
+旧单子目标 case 0 配对现已完整结束：无 WM 在 514 步成功，加 WM 在 526 步成功，两者物理重放均无关节误差；WM 改选 3 次，未减少执行步数。实测墙钟为 64.9 秒 / 120.5 分钟（共享 GPU、排除启动初始化）。详见[独立中文结果](amber-wm-qwen-2026-10-29.md) / [English result](amber-wm-qwen-2026-10-29.en.md)。这不替代当前两任务、多子目标、两模型的实验矩阵。旧回合释放资源后，cube Gemini 无 WM 对照已启动；Qwen 服务接替后新闭环继续完成评分。
