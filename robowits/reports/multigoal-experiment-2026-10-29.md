@@ -35,6 +35,10 @@ lemon case 1，完全相同的初始状态：
 
 验证：16 项相关测试通过；在真实 cube 模拟器里注入全拒绝评分，两种模式均完成 1,000 步、100 次明确弃选，配对动作与全部关节状态逐项完全相等。模型调用在此验证中使用桩，**仅验证控制逻辑，不计入模型效果**。[验证证据](/data/mjw/world-action-planner/multigoal/20261029/abstention-native-integration/verification.json)。Gemini、Qwen 的 cube 修订配对均使用独立冻结 worktree `world-action-planner-multigoal-hold-eval`（`9c1ac29`），输出在 `formal-cube-case1-hold`，按 Gemini 对照→WM、Qwen 对照→WM 顺序运行；Gemini 对照已完成，配对 WM 正在运行，Qwen 两条等待启动。对应固定采样交叉评分和终局物理回放监控已启动，与原版输出分开。
 
+## cube 首轮改选：交叉评分与真实分支
+
+补充 cube 第 0 轮：两者无 WM 时都选候选 1；在线 Gemini 按预测分数 0.30 / 0.15 / 0.20 改选 0，但三个理由均称静止或没有新进展。离线 Qwen 对相同预测全零、保留 1。三条真实分支的 cube 位移仅 0.908 / 0.912 / 0.597 mm；只有左侧 `Link8_L` 与容器接触，分别 8 / 8 / 7 步，没有机器人直接接触 cube。选中候选 0 的十步关节状态与在线执行完全一致。这个局部改选尚无任务收益证据。[cube 首轮真实 / 条件 / WM 视频和交叉评分](/data/mjw/world-action-planner/multigoal/20261029/formal-cube-first-switch-gemini/review/review.md)。
+
 ## 固定第 250 步的交叉评分与物理核查
 
 Qwen 的第 25 次决策中，在线 Qwen 对三组 WM 预测均给 0 分，保留无 WM 候选 2；离线 Gemini 从无 WM 的候选 0 改选候选 2，预测分数为 0 / 0.30 / 0.34。Gemini 对候选 1 的理由却是“静止、没有进展”，与其非零分矛盾。两者最终选项一致，不代表对预测的判断一致，也不构成 WM 增益证据。
