@@ -53,6 +53,10 @@ The comparison image shows new bright-green regions beside the lemon in WM left-
 
 [Candidate videos, actual/predicted comparison, and physical records](/data/mjw/world-action-planner/multigoal/20261029/formal-qwen-step500-physical/review/review.md). Neither judge changed its own no-WM choice in this bank, so this is not evidence of WM-driven behavior improvement.
 
+## Step 750: a limited local directional advantage from offline Gemini
+
+Both judges selected 2 without WM in Qwen decision 75's identical candidate bank. Online Qwen retained 2 with all-zero predicted scores. Offline Gemini scored 0.62 / 0 / 0 and switched to 0, describing transport toward the target. All actual ten-step branches started 544.47 mm from the target in the table plane and ended at 543.92 / 544.50 / 546.81 mm. Candidate 0 moved 0.55 mm closer while candidate 2 moved 2.34 mm farther away, giving the offline switch approximately 2.89 mm of local distance advantage. This is a limited positive directional signal, but the object remains roughly 54 cm away; it does not establish an episode-level gain or improved success rate. No branch gained height, and left `Link8_L` / `Link9_L` contacted the lemon throughout. Prefix states, current RGB, and the online-selected candidate-2 joint trajectory all matched. Gemini's offline choice did not enter the online episode. [Actual / condition / WM videos and physical checks](/data/mjw/world-action-planner/multigoal/20261029/formal-qwen-step750-physical/review/review.md).
+
 ## Agreed design
 
 The user chose plausible errors in timing or object choice, with one expected useful candidate, and independent Gemini/Qwen proposer-and-judge pipelines plus cross-scoring of identical predictions.

@@ -57,6 +57,10 @@ Qwen 第 50 次决策中，在线 Qwen 全零并保留候选 2；离线 Gemini �
 
 [三候选视频、真实 / 预测对照图及物理记录](/data/mjw/world-action-planner/multigoal/20261029/formal-qwen-step500-physical/review/review.md)。这轮两者均未改变各自的无 WM 选择，不能报告为 WM 带来的行为改善。
 
+## 第 750 步：离线 Gemini 改选有有限的局部方向优势
+
+在 Qwen 第 75 次决策的同一个候选池中，两者无 WM 时均选 2。在线 Qwen 看预测后仍全零、保留 2；离线 Gemini 给 0.62 / 0 / 0 并改选 0，理由为将 lemon 搬向目标。三条真实十步分支的初始平面目标距离均为 544.47 mm，结束为 543.92 / 544.50 / 546.81 mm。因此候选 0 靠近 0.55 mm，候选 2 远离 2.34 mm，离线改选有约 2.89 mm 的局部距离优势。这个结果应保留为有限正向信号，但 lemon 仍距目标约 54 cm，不能外推为完整任务收益或成功率改善。三个分支均无正向高度增量，左侧 `Link8_L` / `Link9_L` 全程接触 lemon；前缀、当前图像及在线选中候选 2 的十步关节轨迹均核对通过。Gemini 的离线选择未进入在线回合。[真实 / 条件 / WM 视频与物理检查](/data/mjw/world-action-planner/multigoal/20261029/formal-qwen-step750-physical/review/review.md)。
+
 ## 已确认的设置
 
 - 人工候选以动作合理、但时机或对象错误为主，每轮保留一个预期合适的候选。
