@@ -11,8 +11,8 @@
   "eval_json": "/data/mjw/world-action-planner/eef-study/20261027/novel-scenes.json",
   "vlm_socket": "/tmp/wap-amber-full-20261029.sock",
   "max_steps": 1000,
-  "case": 0,
-  "seed": 202610270,
+  "case": 1,
+  "seed": 202610271,
   "out": "/data/mjw/world-action-planner/multigoal/NEW-RUN",
   "policy_gpu": "0",
   "wm_gpu": "0",
@@ -20,12 +20,14 @@
   "mode": "selection",
   "proposer": "gemini",
   "judges": [
-    "gemini",
-    "qwen"
+    "gemini"
   ],
   "primary_judge": "gemini",
-  "num_subgoals": 4,
-  "samples_per_subgoal": 2,
+  "num_subgoals": 3,
+  "samples_per_subgoal": 1,
   "credential_file": "/home/junwenmiao/code/RoboWits-wap/.env",
-  "gemini_model": "gemini-3-flash-preview"
+  "gemini_model": "gemini-3-flash-preview",
+  "gemini_thinking_level": "high",
+  "qwen_thinking": false,
+  "value_candidate_text": false
 }

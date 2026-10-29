@@ -58,3 +58,15 @@ For full runs, naturally generated banks may contain 3–5 distinct subgoals, pr
 The cube's eight physical branches completed, including a native integration check of candidate-bank reuse against complete inputs, seeds and targets. Its WM diagnostic is still running. Current tests: 46 passed, 1 skipped.
 
 Review artifacts: `/data/mjw/world-action-planner/multigoal/20261029/initial-review/review.md` and `step350-review/review.md`.
+
+## Running paired episodes
+
+Runtime is pinned to detached worktree `/home/junwenmiao/code/world-action-planner-multigoal-eval`, commit `7caca41`, verified with 46 passed and 1 skipped. Subsequent edits in the development worktree do not alter running code.
+
+Live Markdown: `/data/mjw/world-action-planner/multigoal/20261029/progress.md`. The `formal-case1` Gemini and Qwen supervisors each run a complete control, then automatically run its WM pair with verified shared-prefix candidates. `formal-cube-case1` queues the same comparisons on cube case 1, seed 202610291, after the older Amber job releases resources.
+
+The extra Qwen thinking probe still scored one actual transport clip zero; its static query timed out. It is recorded as partial, and the dedicated thinking service was cleaned up. Formal Qwen remains non-thinking. A managed service handoff preserves access when the original experiment's Qwen server exits.
+
+All three local GT/condition/WM reviews are available under `initial-review`, `step350-review`, and `cube-review`. An additional anchor audit finds two Qwen goals pointing at the robot hand, approximately 164.9 mm from the actual lemon center. Spatial conditioning was present and differed across goals; this is a proposal/grounding error rather than evidence that conditioning was absent. Simulator coordinates are used only offline. See `step350-grounding-review/review.md`.
+
+Still required: completed native endpoints and paired outcome/runtime analysis, user review and execution of the manual chain, and the two-task/two-model comparative report. The overall goal remains active.

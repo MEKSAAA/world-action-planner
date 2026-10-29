@@ -98,3 +98,17 @@ Gemini 接口依据 [Google GenerateContent 文档](https://ai.google.dev/api/ge
 - 最新测试：46 passed, 1 skipped。
 
 后续正式配对使用未用于上述评分调试的 lemon 初态 case 1（seed 202610271）。评分调试仍属于开发集诊断，不作为正式成功率样本。人工版本的具体链条仍待用户确认。
+
+## 正式回合运行位置与后续核验
+
+运行代码冻结在独立 worktree：`/home/junwenmiao/code/world-action-planner-multigoal-eval`，commit `7caca41`。已在该 worktree 验证 46 passed, 1 skipped。后续源仓库文档或诊断工具编辑不影响运行代码。
+
+- 实时 Markdown：`/data/mjw/world-action-planner/multigoal/20261029/progress.md`。
+- lemon 成对实验：`formal-case1/`。Gemini、Qwen 各先跑完整无 WM 对照，到原生终点后自动启动同初态、同候选前缀的 WM 闭环。两套链路独立，不混用提议器。
+- 第二任务成对实验：`formal-cube-case1/`，case 1、seed 202610291；等待原有 Amber 单子目标实验释放资源后依次运行 Gemini 与 Qwen。
+- Qwen 推理模式的额外诊断：一个真实搬运片段仍得 0；静止片段查询超时，记录为 `partial_timeout`。专用推理服务已经清理。正式 Qwen 保持非推理设置；既有 Qwen 服务退出后有独立服务接替，避免长回合中途失去服务。
+- 初始 lemon、第 350 步和 cube 的局部 WM/实际分支视频均完成，分别见 `initial-review/`、`step350-review/`、`cube-review/`。
+
+另发现第 350 步两个 Qwen 锚点位于机器人手部，三维点距 lemon 中心约 164.9 mm。实际空间条件输入有效且不同，因此应归因于提议/定位错误，不能直接归因于策略忽略子目标。人工审核图位于 `step350-grounding-review/review.md`。核对只读取原生配置和事后物体位置，不向在线链路提供真实未来。
+
+完成前仍须核验：各成对回合是否真正到达原生终点；WM 改变动作后是否提升任务结果及耗时；人工链审核与执行；两任务及两模型的完整对照与交叉评分汇总。人工链尚未获确认，整体目标仍在进行。
