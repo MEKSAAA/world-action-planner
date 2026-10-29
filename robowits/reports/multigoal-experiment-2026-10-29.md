@@ -132,3 +132,13 @@ Gemini 接口依据 [Google GenerateContent 文档](https://ai.google.dev/api/ge
 - 检查：49 passed, 1 skipped；运行代码仍固定在 `7caca41`，π0.5 训练与权重未修改。
 
 首个正式同池交叉评分已经完成（Qwen case 1，第 0 次选择）：Qwen 为 `[0,0,0]`，保持无 WM 候选 2；Gemini 为 `[0.3,0.3,0]`，保持其离线无 WM 候选 1。两者各自均未因 WM 改选，不能把二者选择差异当作 WM 的作用。Gemini 对前两项的解释明确说静止、无进展，却给 0.3；说明评分与理由矛盾在新初态上仍出现。原始证据见 `formal-crossscore/review.md`。
+
+## 两任务的物理重放验证
+
+新增 `python -m robowits.multigoal_replay --run RUN --out AUDIT`：对已经结束的回合重放原动作，核对模拟器版本、初始状态、逐步关节、每个决策点的真实 RGB 哈希、原生成功和终止标志。保存每帧物体位置、姿态和接触，只用于事后诊断。不会调用策略或 WM，也不会修改在线输入。
+
+- lemon 的 Qwen 无 WM 完整回合：1,000 步、100 个决策画面全部通过，关节误差 0；距离和接触统计与此前独立接触审计一致。
+- cube 已完成的 10 步诊断：画面和关节重放通过；显式使用 `--allow-diagnostic`，结果为 `diagnostic_verified`、`native_success=null`，不会计作完整任务失败。
+- 后台核查队列监视两任务、两模型、有无 WM 的八个正式回合；仅在每回合原生结束后启动重放。汇总：`/data/mjw/world-action-planner/multigoal/20261029/formal-native-replay/review.md`。
+
+这些检查提高结果的可复查性，不改变任务成功率，也不解决 VLM 定位或评分可靠性问题。

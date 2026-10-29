@@ -84,3 +84,9 @@ The completed Qwen control was physically replayed with zero joint error: 819 fi
 Control limitation: the no-WM judge sees current RGB and candidate language, without explicit candidate arm/anchor/spatial coordinates. Predictions provide additional action geometry. Any eventual benefit therefore needs to distinguish geometry-informed action selection from better object-dynamics prediction.
 
 The first formal same-bank cross-score is complete (Qwen case 1, decision 0). Online Qwen scores were `[0,0,0]`, retaining its no-WM choice 2. Offline Gemini scores were `[0.3,0.3,0]`, retaining its own no-WM choice 1. Neither judge changed its own choice because of WM; their disagreement already existed without WM. Gemini's first two explanations explicitly describe no motion/progress despite scores of 0.3, so score–rationale inconsistency persists on the new initial state. Evidence: `formal-crossscore/review.md`.
+
+## Native replay verification for both tasks
+
+`python -m robowits.multigoal_replay --run RUN --out AUDIT` replays completed recorded actions and checks the simulator revision, initial state, every joint state, each decision's real RGB hash, native success, and termination flags. Per-frame object positions/orientations and contacts are saved for post-hoc diagnosis only. It queries neither policy nor WM and cannot feed oracle data into online selection.
+
+The full Qwen lemon control passed all 1,000 steps and 100 decision-image checks with zero joint error; contact/distance statistics agree with the earlier independent audit. The existing 10-step cube diagnostic also passed using explicit `--allow-diagnostic`, retaining `native_success=null`. An audit queue now watches all eight formal episodes and verifies each only after its native endpoint. Index: `formal-native-replay/review.md` under the experiment directory. These are reproducibility checks, not additional successful episodes or a remedy for grounding/scoring errors.
