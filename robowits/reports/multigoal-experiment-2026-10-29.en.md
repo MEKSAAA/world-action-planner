@@ -70,3 +70,15 @@ The extra Qwen thinking probe still scored one actual transport clip zero; its s
 All three local GT/condition/WM reviews are available under `initial-review`, `step350-review`, and `cube-review`. An additional anchor audit finds two Qwen goals pointing at the robot hand, approximately 164.9 mm from the actual lemon center. Spatial conditioning was present and differed across goals; this is a proposal/grounding error rather than evidence that conditioning was absent. Simulator coordinates are used only offline. See `step350-grounding-review/review.md`.
 
 Still required: completed native endpoints and paired outcome/runtime analysis, user review and execution of the manual chain, and the two-task/two-model comparative report. The overall goal remains active.
+
+## First formal episode endpoint and cross-scoring plan
+
+The lemon case-1 Qwen no-WM control reached **1,000 steps without success** (`terminated=false`, `truncated=true`; 100 decisions). Recorded episode wall time was 1,579.94 seconds, excluding startup initialization. Its paired WM episode has started but has no terminal result yet. This single control episode does not establish a population success rate or a WM benefit. The Markdown review, fixed-cadence observations, and full execution video are under `formal-review/qwen-without-wm/review.md` in the experiment directory.
+
+Formal cross-scoring uses decision indices 0, 25, 50, 75, plus the last executed decision at the native endpoint; this schedule was saved before formal WM results. It retains the primary judge's actual online scores and selection, then asks the other judge to score identical saved predictions offline. Input/prediction hashes and observation identity are recorded. No offline score changes executed actions.
+
+`robowits.multigoal_episode_report` exports Markdown timelines, excludes unexecuted decisions, and distinguishes running/technical-error states from native failures. `multigoal_rescore --reuse-recorded-primary` prevents a fresh primary rating from being mistaken for the actual online choice. Validation: 49 passed, 1 skipped. Formal execution remains frozen at `7caca41`; policy training and weights are untouched. Manual candidate-chain review and the remaining full pairs are still outstanding.
+
+The completed Qwen control was physically replayed with zero joint error: 819 finger-contact frames, 41.7 mm maximum lemon lift. Its planar distance to the target increased from 350.1 to 561.6 mm. At step 750, two candidate anchors lay near the green target, while the selected “move towards the target” candidate pointed toward the opposite side, about 725 mm from the target center. See `formal-review/qwen-without-wm/grounding.md`. Simulator object coordinates are used only in this post-hoc audit.
+
+Control limitation: the no-WM judge sees current RGB and candidate language, without explicit candidate arm/anchor/spatial coordinates. Predictions provide additional action geometry. Any eventual benefit therefore needs to distinguish geometry-informed action selection from better object-dynamics prediction.
