@@ -5,7 +5,7 @@ import sys
 import numpy as np
 import pytest
 
-from robowits.multigoal_episode_report import review_indices, terminal_outcome
+from robowits.multigoal_episode_report import inference_usage, review_indices, terminal_outcome
 from robowits import multigoal_rescore
 
 
@@ -19,6 +19,41 @@ def test_partial_and_error_are_not_native_failures():
     assert review_indices(100) == [0, 25, 50, 75, 99]
     assert review_indices(51) == [0, 25, 50]
     assert review_indices(0) == []
+
+
+def test_usage_counts_retries_once_and_excludes_reused_proposals(tmp_path):
+    def save(relative, value):
+        path = tmp_path/relative
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(json.dumps(value))
+    base = 'decision-0000'
+    save(f'{base}/candidate-bank-reuse.json', {'source': 'another-run'})
+    save(f'{base}/proposals/attempt-0/request.json', {'backend': 'gemini'})
+    save(f'{base}/proposals/attempt-0/provider-response.json',
+         {'usageMetadata': {'totalTokenCount': 10000}})
+    attempt = f'{base}/wm-gemini/candidate-0/vlm/attempt-0'
+    save(f'{attempt}/request.json', {'backend': 'gemini'})
+    # Provider returned a billed response, but validation failed before a
+    # normalized response was saved. It must still count.
+    save(f'{attempt}/provider-response.json',
+         {'usageMetadata': {'totalTokenCount': 100, 'thoughtsTokenCount': 70}})
+    retry = f'{base}/wm-gemini/candidate-0/vlm/attempt-1'
+    save(f'{retry}/request.json', {'backend': 'gemini'})
+    save(f'{retry}/provider-response.json', {'usageMetadata': {'totalTokenCount': 50}})
+    save(f'{retry}/response.json', {'usage': {'totalTokenCount': 50}, 'seconds': 3})
+    save('decision-0001/proposals/attempt-0/request.json', {'backend': 'gemini'})
+    local = 'decision-0001/wm-qwen/candidate-0/vlm/attempt-0'
+    save(f'{local}/request.json', {'prompt': 'score'})
+    save(f'{local}/response.json', {'output_tokens': 12, 'seconds': 2})
+    summary = inference_usage(tmp_path)
+    gemini = summary['providers']['gemini']
+    assert gemini['requests'] == 3
+    assert gemini['responses_with_usage'] == 2
+    assert gemini['requests_without_usage'] == 1
+    assert gemini['token_counts'] == {'totalTokenCount': 150, 'thoughtsTokenCount': 70}
+    assert gemini['recorded_response_seconds'] == 3
+    assert summary['providers']['qwen']['token_counts'] == {'localOutputTokens': 12}
+    assert summary['copied_proposal_requests_excluded'] == 1
 
 
 @pytest.fixture

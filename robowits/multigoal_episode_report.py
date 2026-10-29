@@ -41,6 +41,63 @@ def cell(value):
     return str(value).replace('|', '\\|').replace('\n', ' ')
 
 
+def inference_usage(run):
+    """Count saved attempts once, excluding proposals copied from a paired run.
+
+    Raw provider metadata covers responses rejected by the JSON validator too.
+    Missing responses have unknown usage, not zero usage. This is a log audit,
+    not billing reconciliation, and includes unfinished-decision attempts.
+    """
+    totals, stages, issues = {}, Counter(), []
+    excluded = 0
+    for decision in sorted(run.glob('decision-*')):
+        if not decision.is_dir():
+            continue
+        reused = (decision/'candidate-bank-reuse.json').exists()
+        for request in sorted(decision.rglob('request.json')):
+            relative = request.relative_to(decision)
+            stage = relative.parts[0]
+            if reused and stage == 'proposals':
+                excluded += 1
+                continue
+            try:
+                req = read(request)
+                response_path = request.with_name('response.json')
+                provider_path = request.with_name('provider-response.json')
+                response = read(response_path) if response_path.exists() else {}
+                provider = read(provider_path) if provider_path.exists() else {}
+            except (OSError, json.JSONDecodeError) as exc:
+                issues.append({'path': str(request.relative_to(run)), 'error': type(exc).__name__})
+                continue
+            name = req.get('backend') or ('qwen' if 'output_tokens' in response else 'unknown')
+            group = totals.setdefault(name, {'requests': 0, 'responses_with_usage': 0,
+                'requests_without_usage': 0, 'recorded_response_seconds': 0.,
+                'token_counts': {}, 'models': []})
+            group['requests'] += 1
+            model = provider.get('modelVersion') or response.get('model') or req.get('model')
+            if model and model not in group['models']:
+                group['models'].append(model)
+            seconds = response.get('seconds', 0.)
+            group['recorded_response_seconds'] += seconds
+            stages[stage] += seconds
+            usage = provider.get('usageMetadata') or response.get('usage') or {}
+            counts = {k: v for k, v in usage.items()
+                      if k.endswith('TokenCount') and type(v) is int}
+            if type(response.get('output_tokens')) is int:
+                counts['localOutputTokens'] = response['output_tokens']
+            if counts:
+                group['responses_with_usage'] += 1
+                for key, value in counts.items():
+                    group['token_counts'][key] = group['token_counts'].get(key, 0) + value
+            else:
+                group['requests_without_usage'] += 1
+    return {'providers': totals, 'recorded_response_seconds_by_stage': dict(stages),
+            'copied_proposal_requests_excluded': excluded, 'unreadable_attempts': issues,
+            'scope': 'saved local attempts including retries and unfinished decisions; '
+                     'excludes reused proposal logs and external offline cross-scores; '
+                     'missing usage is unknown; token fields are not additive'}
+
+
 def export(run, out):
     run, out = run.resolve(), out.resolve()
     protocol = read(run/'protocol.json')
@@ -91,6 +148,7 @@ def export(run, out):
         'timing_seconds': {key: sum(d[key] for d in executed) for key in
             ('proposal_seconds', 'policy_seconds', 'proxy_seconds', 'wm_seconds')},
         'wall_seconds': result.get('wall_seconds'),
+        'inference_usage': inference_usage(run),
         'review_decisions': review_indices(len(executed))}
     audit_path = run/'contact-replay.json'
     if audit_path.exists():
@@ -114,6 +172,19 @@ def export(run, out):
         f'评分异常计数：`{dict(reasons)}`；无效候选 {summary["invalid_candidates"]}/{len(flat)}。',
         f'已记录推理耗时（秒）：`{summary["timing_seconds"]}`。不含所有初始化和评分时间；不能当作端到端总耗时。', '',
         f'[原始配置]({link(run/"protocol.json")}) · [逐轮原始记录]({link(run/"decisions.json")})', '']
+    usage = summary['inference_usage']
+    lines += ['## 已保存的模型调用用量 / Recorded inference usage', '',
+              '包括重试及尚未执行的决策调用；排除从配对回合复制的提议记录和外部交叉评分。'
+              '缺失用量不是零用量；各 token 字段可能重叠，不相加为总数。此处不是账单核对。', '',
+              '|模型来源|记录请求数|有用量响应数|缺失用量请求数|Token 字段|记录响应秒数|',
+              '|---|---:|---:|---:|---|---:|']
+    for name, value in usage['providers'].items():
+        lines.append(f'|{name}|{value["requests"]}|{value["responses_with_usage"]}|'
+                     f'{value["requests_without_usage"]}|{value["token_counts"]}|'
+                     f'{value["recorded_response_seconds"]:.1f}|')
+    lines += ['', f'排除复制提议请求 {usage["copied_proposal_requests_excluded"]} 条；'
+              f'未能读取的调用记录 {len(usage["unreadable_attempts"])} 条。'
+              '响应时间可能已包含在上方提议耗时内，不与之相加。', '']
     if outcome is not None:
         lines += [f'[完整执行视频]({link(run/"execution.mp4")})', '']
     if 'contact_audit' in summary:
