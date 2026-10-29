@@ -18,7 +18,7 @@ from types import SimpleNamespace
 
 import numpy as np
 
-from .closed_loop import Worker, file_sha256, snapshot, state16, write_json
+from .closed_loop import Worker, file_sha256, snapshot, same_state, state16, write_json
 from .eef_actions import EEFProxy, chunk_targets, control_action
 from .eef_loop import candidate_seeds, history_inputs
 from .geometry import Marvin, pack
@@ -58,6 +58,26 @@ def run(env, policy, wm, proxy, fk, config, out):
             video.append_data(rgb)
         observe()
         try:
+            if config.get('prefix_run'):
+                source = Path(config['prefix_run'])
+                start_step = config['prefix_steps']
+                if not same_state(snapshot(env), json.loads((source/'initial.json').read_text())):
+                    raise ValueError('Diagnostic prefix initial state differs')
+                with np.load(source/'trajectory.npz') as recorded:
+                    if not 0 < start_step < min(len(recorded['actions']), config['max_steps']):
+                        raise ValueError('Prefix must end before the episode endpoint')
+                    for step, action in enumerate(recorded['actions'][:start_step], 1):
+                        obs, _, terminated, truncated, info = env.step(action)
+                        if terminated or truncated or not np.allclose(
+                                state16(env._robot), recorded['joints'][step], atol=1e-5, rtol=0):
+                            raise ValueError('Diagnostic prefix replay diverged')
+                        actions.append(action)
+                        observe()
+                result.update(steps=start_step, replayed_prefix_steps=start_step)
+                write_json(out/'prefix.json', {'source': str(source), 'steps': start_step,
+                    'trajectory_sha256': file_sha256(source/'trajectory.npz'),
+                    'initial_and_each_joint_state_verified': True,
+                    'scope': 'diagnostic state reached using recorded past actions'})
             while env._step_count < config['max_steps']:
                 index = len(decisions)
                 folder = out/f'decision-{index:04d}'
@@ -162,6 +182,8 @@ def main():
         raise ValueError('Invalid judges')
     if config['max_steps'] < 1 or config.get('diagnostic_decisions', 1) < 1:
         raise ValueError('Positive step and diagnostic budgets required')
+    if config.get('prefix_run') and not config.get('diagnostic_decisions'):
+        raise ValueError('Recorded prefix warm starts are restricted to diagnostic runs')
     # Resolve relative experiment paths before workers change working directories.
     for key in ('out','sim_root','policy_python','openpi_runtime','policy_checkpoint',
                 'wm_python','wm_checkpoint','ckpts','wan','urdf','eval_json','manual'):
